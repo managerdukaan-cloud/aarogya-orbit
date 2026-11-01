@@ -54,6 +54,10 @@ function render() {
       };
       act.append(b);
     }
+    if (['in_consultation', 'completed'].includes(a.status)) {
+      const l = document.createElement('a'); l.className = 'btn btn-ghost'; l.href = `/prescription.html?a=${encodeURIComponent(a.id)}`;
+      l.textContent = t(a.prescriptionId ? 'rx.view' : 'rx.new'); act.append(l);
+    }
     if (act.children.length) c.append(act);
     box.append(c);
   }

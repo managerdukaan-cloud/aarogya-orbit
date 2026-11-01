@@ -181,3 +181,37 @@ exports.updateAppointmentStatus = onCall(REGION, async (req) => {
   });
   return { ok: true };
 });
+
+// A prescription can be issued ONLY here, by the treating doctor, tied to a real appointment.
+// It is stored with the doctor's registration details and cannot be edited afterwards (clients cannot write to it at all).
+const clip = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+exports.createPrescription = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  if (req.auth.token.role !== 'doctor') throw new HttpsError('permission-denied', 'Doctors only.');
+  const { appointmentId, medicines, advice, followUpDate } = req.data || {};
+  if (typeof appointmentId !== 'string' || !Array.isArray(medicines) || medicines.length < 1 || medicines.length > 10) throw new HttpsError('invalid-argument', 'Bad request.');
+  const meds = medicines.map(m => ({ name: clip(m?.name, 100), dose: clip(m?.dose, 50), frequency: clip(m?.frequency, 50), duration: clip(m?.duration, 50), notes: clip(m?.notes, 150) }));
+  if (meds.some(m => m.name.length < 2)) throw new HttpsError('invalid-argument', 'Each medicine needs a name.');
+  let follow = '';
+  if (followUpDate) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(followUpDate) || followUpDate < istNow().date) throw new HttpsError('invalid-argument', 'Bad follow-up date.');
+    follow = followUpDate;
+  }
+  const db = admin.firestore(), apptRef = db.doc(`appointments/${appointmentId}`), rxRef = db.doc(`prescriptions/${appointmentId}`), docRef = db.doc(`doctors/${req.auth.uid}`);
+  await db.runTransaction(async (tx) => {
+    const [a, existing, d] = await Promise.all([tx.get(apptRef), tx.get(rxRef), tx.get(docRef)]);
+    if (!a.exists || a.data().doctorUid !== req.auth.uid) throw new HttpsError('permission-denied', 'Not your appointment.');
+    if (!['in_consultation', 'completed'].includes(a.data().status)) throw new HttpsError('failed-precondition', 'Consultation has not started.');
+    if (existing.exists) throw new HttpsError('already-exists', 'Prescription already issued.');
+    if (!d.exists || d.data().verified !== true) throw new HttpsError('permission-denied', 'Doctor not verified.');
+    const x = a.data(), dr = d.data();
+    tx.set(rxRef, {
+      appointmentId, doctorUid: req.auth.uid, doctorName: dr.name, regNumber: dr.regNumber, council: dr.council, clinicName: dr.clinicName,
+      patientUid: x.patientUid, memberId: x.memberId, memberName: x.memberName,
+      medicines: meds, advice: clip(advice, 1000), followUpDate: follow, issuedAt: FieldValue.serverTimestamp()
+    });
+    tx.update(apptRef, { prescriptionId: appointmentId });
+    tx.set(db.collection('audit_logs').doc(), { action: 'prescription_issued', targetUid: x.patientUid, appointmentId, by: req.auth.uid, at: FieldValue.serverTimestamp() });
+  });
+  return { id: appointmentId };
+});

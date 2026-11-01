@@ -44,3 +44,19 @@ a.btn{text-decoration:none}
 .step{margin:18px 0 8px;font-weight:600}
 .status{display:inline-block;border-radius:999px;font-size:12px;font-weight:600;padding:2px 10px;background:var(--mint-soft)}
 .status.cancelled{background:#FCE8E8;color:#8E2626}
+.rx{padding:24px}
+.rx h2{font-size:20px}
+.rx .rxhead{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--graphite);padding-bottom:10px;margin-bottom:12px}
+.rx .scroll{overflow-x:auto}
+.rx table{width:100%;border-collapse:collapse;font-size:14px;min-width:460px}
+.rx th,.rx td{border-bottom:1px solid var(--border);padding:8px 6px;text-align:left;vertical-align:top}
+.rx .foot{font-size:12px;color:var(--muted);margin-top:14px}
+.medrow{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));padding:12px 0;border-bottom:1px solid var(--border)}
+.medrow input{width:100%;min-height:44px;border:1.5px solid transparent;border-radius:var(--r-sm);padding:0 12px;font:400 15px var(--font);background:var(--bg);box-shadow:var(--emboss-in);color:var(--graphite)}
+@media print{
+  .header,.subnav,.no-print,.bottom-nav{display:none!important}
+  body{background:#fff;padding:0}
+  .page,.container{max-width:none;width:100%}
+  .card,.panel{box-shadow:none!important;border:0!important}
+  body.print-one .rx:not(.printing){display:none!important}
+}

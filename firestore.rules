@@ -67,6 +67,13 @@ service cloud.firestore {
     }
     match /booked_slots/{id} { allow read: if true; allow write: if false; }
 
+
+    // Prescriptions: written ONLY by the createPrescription Cloud Function. Read by the patient, the issuing doctor, or an admin.
+    match /prescriptions/{id} {
+      allow read: if signedIn() && (resource.data.patientUid == request.auth.uid || resource.data.doctorUid == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
     match /specialities/{id}     { allow read: if true; allow write: if isAdmin(); }
     match /service_areas/{id}    { allow read: if true; allow write: if isAdmin(); }
     match /diagnostic_tests/{id} { allow read: if true; allow write: if isAdmin(); }
