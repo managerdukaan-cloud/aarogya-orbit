@@ -60,3 +60,6 @@ a.btn{text-decoration:none}
   .card,.panel{box-shadow:none!important;border:0!important}
   body.print-one .rx:not(.printing){display:none!important}
 }
+.medrow .f{display:block}
+.medrow .f span{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-bottom:4px}
+@media print{#msg,.page>h1{display:none!important}}

@@ -19,9 +19,12 @@ function showRx() { $('view').replaceChildren(renderRx(rx)); }
 function medRow() {
   const row = document.createElement('div'); row.className = 'medrow';
   [['name', 'rx.medicine', 100], ['dose', 'rx.dose', 50], ['frequency', 'rx.freq', 50], ['duration', 'rx.dur', 50], ['notes', 'rx.notes', 150]].forEach(([k, label, max]) => {
-    const i = document.createElement('input'); i.type = 'text'; i.dataset.k = k; i.maxLength = max; i.placeholder = t(label); i.setAttribute('aria-label', t(label)); row.append(i);
+    const f = document.createElement('label'); f.className = 'f';
+    const cap = document.createElement('span'); cap.textContent = t(label);
+    const i = document.createElement('input'); i.type = 'text'; i.dataset.k = k; i.maxLength = max;
+    f.append(cap, i); row.append(f);
   });
-  const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'btn btn-ghost danger'; rm.textContent = t('rx.remove');
+  const rm = document.createElement('button'); rm.type = 'button'; rm.className = 'btn btn-ghost danger'; rm.textContent = t('rx.remove'); rm.style.alignSelf = 'end';
   rm.onclick = () => { if ($('meds').children.length > 1) row.remove(); }; row.append(rm);
   $('meds').append(row);
 }
