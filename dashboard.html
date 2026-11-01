@@ -1,0 +1,9 @@
+<!doctype html><html lang="en"><head><title>AAROGYA ORBIT – Dashboard</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#18251D"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"></head><body>
+<header class="header"><div class="container"><a href="/"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><button class="btn btn-ghost" id="logout" data-i18n="dash.logout"></button></div></div></header>
+<main class="container dash" id="app" hidden>
+<h1 id="greet"></h1><p style="margin:8px 0 24px"><span class="badge" id="role"></span></p>
+<p class="notice" id="soon" hidden data-i18n="dash.soon"></p>
+<div id="patientBox" class="grid">
+<article class="card"><h3 data-i18n="svc.doctor"></h3><p data-i18n="dash.emptyAppt"></p></article>
+<article class="card"><h3 data-i18n="svc.records"></h3><p data-i18n="dash.emptyRec"></p></article></div>
+</main><script type="module" src="/js/dashboard.js"></script></body></html>
