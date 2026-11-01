@@ -24,6 +24,7 @@ function render() {
     const st = document.createElement('span'); st.className = 'status ' + a.status; st.textContent = t('st.' + a.status); h.append(st);
     c.append(h, line('', `${a.date} · ${a.time}`), line('meta', t('ap.for').replace('{name}', a.memberName)),
       line('meta', a.clinicName || ''), line('meta', t('bk.fee').replace('{n}', a.fee)));
+    if (a.status === 'cancelled' && a.cancelledBy === a.doctorUid) c.append(line('meta', t('ap.byDoctor')));
     if (live(a)) {
       const b = document.createElement('button'); b.className = 'btn btn-ghost danger'; b.textContent = t('ap.cancel');
       b.onclick = async () => {

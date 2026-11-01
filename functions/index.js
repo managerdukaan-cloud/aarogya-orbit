@@ -153,3 +153,31 @@ exports.cancelAppointment = onCall(REGION, async (req) => {
   });
   return { ok: true };
 });
+
+// Doctor moves an appointment through its stages. Only these transitions are allowed.
+const NEXT = {
+  pending: ['confirmed', 'cancelled'],
+  confirmed: ['checked_in', 'cancelled', 'no_show'],
+  checked_in: ['in_consultation', 'cancelled'],
+  in_consultation: ['completed']
+};
+exports.updateAppointmentStatus = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  if (req.auth.token.role !== 'doctor') throw new HttpsError('permission-denied', 'Doctors only.');
+  const { id, status } = req.data || {};
+  if (typeof id !== 'string' || typeof status !== 'string') throw new HttpsError('invalid-argument', 'Bad request.');
+  const db = admin.firestore(), ref = db.doc(`appointments/${id}`);
+  await db.runTransaction(async (tx) => {
+    const a = await tx.get(ref);
+    if (!a.exists || a.data().doctorUid !== req.auth.uid) throw new HttpsError('permission-denied', 'Not your appointment.');
+    const x = a.data();
+    if (!(NEXT[x.status] || []).includes(status)) throw new HttpsError('failed-precondition', 'Not allowed from this status.');
+    const now = istNow(), started = x.date < now.date || (x.date === now.date && toMins(x.time) <= now.mins);
+    if (status === 'checked_in' && x.date !== now.date) throw new HttpsError('failed-precondition', 'Only on the appointment day.');
+    if (status === 'no_show' && !started) throw new HttpsError('failed-precondition', 'Time has not come yet.');
+    const upd = { status, statusHistory: FieldValue.arrayUnion({ status, by: req.auth.uid, at: admin.firestore.Timestamp.now() }) };
+    if (status === 'cancelled') { upd.cancelledBy = req.auth.uid; upd.cancelledAt = FieldValue.serverTimestamp(); tx.delete(db.doc(`booked_slots/${x.lockId}`)); }
+    tx.update(ref, upd);
+  });
+  return { ok: true };
+});
