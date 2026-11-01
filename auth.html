@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><title>AAROGYA ORBIT – Log in</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#18251D"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"></head><body>
+<header class="header"><div class="container"><a href="/"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div></div></header>
+<main class="auth-wrap"><section class="auth-card">
+<div class="tabs" role="tablist"><button role="tab" data-tab="login" data-i18n="nav.login">Log in</button><button role="tab" data-tab="signup" data-i18n="nav.signup">Sign up</button></div>
+<h1 id="title" data-i18n="auth.login.title"></h1>
+<div id="msg" class="msg" role="alert" aria-live="polite" hidden></div>
+<form id="form" novalidate>
+<div class="field only-signup" hidden><label for="name" data-i18n="auth.name"></label><input id="name" type="text" autocomplete="name"></div>
+<div class="field"><label for="email" data-i18n="auth.email"></label><input id="email" type="email" autocomplete="email" inputmode="email"></div>
+<div class="field"><label for="password" data-i18n="auth.password"></label><div class="pw"><input id="password" type="password"><button type="button" id="toggle" aria-pressed="false" data-i18n="auth.show">Show</button></div>
+<div class="only-signup" hidden><div class="meter" id="meter" data-level="0"><i></i><i></i><i></i><i></i></div><div class="hint" id="strengthText"></div></div></div>
+<label class="check only-signup" hidden><input type="checkbox" id="terms"><span data-i18n="auth.terms"></span></label>
+<button class="btn btn-primary" id="submit" type="submit"><span id="spin" class="loader" hidden></span><span id="submitLabel" data-i18n="auth.login.btn"></span></button>
+<div class="only-login" style="text-align:center"><button type="button" class="link" id="forgot" data-i18n="auth.forgot"></button></div>
+</form>
+<div class="or" data-i18n="auth.or"></div>
+<button class="btn btn-ghost" id="google" type="button" data-i18n="auth.google"></button>
+</section></main>
+<div class="welcome" id="welcome" hidden role="status"><div class="tick"><svg width="48" height="48" viewBox="0 0 48 48"><path d="M12 25l9 9 16-19"/></svg></div><h2 data-i18n="auth.welcome"></h2><p id="hello"></p></div>
+<script type="module" src="/js/auth-page.js"></script></body></html>
