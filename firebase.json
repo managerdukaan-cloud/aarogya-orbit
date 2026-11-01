@@ -8,6 +8,9 @@
     ]}]
   },
   "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
-  "storage": { "rules": "storage.rules" },
+  "storage": [
+    { "bucket": "aarogya-orbit-mumbai", "rules": "storage.rules" },
+    { "bucket": "aarogya-orbit.firebasestorage.app", "rules": "storage.rules" }
+  ],
   "functions": [{ "source": "functions", "codebase": "default" }]
 }

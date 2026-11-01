@@ -77,7 +77,7 @@ exports.getApplicationDocument = onCall(REGION, async (req) => {
   if (typeof uid !== 'string' || typeof path !== 'string' || !path.startsWith(`doctor_docs/${uid}/`)) throw new HttpsError('invalid-argument', 'Bad request.');
   const a = await admin.firestore().doc(`doctor_applications/${uid}`).get();
   if (!a.exists || !(a.data().documents || []).some(d => d.path === path)) throw new HttpsError('not-found', 'Document not found.');
-  const file = admin.storage().bucket().file(path);
+  const file = admin.storage().bucket('aarogya-orbit-mumbai').file(path);
   const [[buf], [meta]] = await Promise.all([file.download(), file.getMetadata()]);
   if (buf.length > 6 * 1024 * 1024) throw new HttpsError('failed-precondition', 'File too large.');
   await admin.firestore().collection('audit_logs').add({ action: 'document_viewed', targetUid: uid, by: req.auth.uid, at: FieldValue.serverTimestamp() });

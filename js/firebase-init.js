@@ -8,5 +8,6 @@ import { firebaseConfig } from './firebase.js';
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app);
+// Private files live in the Mumbai (asia-south1) bucket.
+export const storage = getStorage(app, 'gs://aarogya-orbit-mumbai');
 export const functions = getFunctions(app, 'asia-south1');
