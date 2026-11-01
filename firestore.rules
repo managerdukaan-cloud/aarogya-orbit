@@ -48,6 +48,17 @@ service cloud.firestore {
     // Public verified profiles. Written only by the Cloud Function after admin approval.
     match /doctors/{id} { allow read: if true; allow write: if false; }
 
+
+    // Weekly timings. Public so patients can see them; only the doctor can change their own.
+    match /doctor_schedules/{uid} {
+      allow read: if true;
+      allow create, update: if signedIn() && request.auth.uid == uid && request.auth.token.role == 'doctor'
+        && request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly(['uid','weekly','slotMinutes','updatedAt'])
+        && request.resource.data.slotMinutes in [10,15,20,30,45,60];
+      allow delete: if false;
+    }
+
     match /specialities/{id}     { allow read: if true; allow write: if isAdmin(); }
     match /service_areas/{id}    { allow read: if true; allow write: if isAdmin(); }
     match /diagnostic_tests/{id} { allow read: if true; allow write: if isAdmin(); }

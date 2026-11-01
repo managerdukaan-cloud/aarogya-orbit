@@ -12,6 +12,7 @@ function paint() {
   $('role').textContent = t('role.' + role);
   $('patientBox').hidden = role !== 'patient';
   $('adminBox').hidden = role !== 'admin';
+  $('doctorBox').hidden = role !== 'doctor';
   $('soon').hidden = ['patient', 'admin'].includes(role);
   $('soon').textContent = t(role === 'doctor' ? 'dash.doctorSoon' : 'dash.soon');
 }

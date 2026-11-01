@@ -1,16 +1,60 @@
 {
   "hosting": {
     "public": ".",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "README.md", "*.rules", "firestore.indexes.json", "functions/**", "public/**", "{assets/**"],
-    "headers": [{ "source": "**", "headers": [
-      { "key": "X-Content-Type-Options", "value": "nosniff" },
-      { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
-    ]}]
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "README.md",
+      "*.rules",
+      "firestore.indexes.json",
+      "functions/**",
+      "public/**",
+      "{assets/**"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          }
+        ]
+      },
+      {
+        "source": "**/*.@(json|js|css|html)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      }
+    ]
   },
-  "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
   "storage": [
-    { "bucket": "aarogya-orbit-mumbai", "rules": "storage.rules" },
-    { "bucket": "aarogya-orbit.firebasestorage.app", "rules": "storage.rules" }
+    {
+      "bucket": "aarogya-orbit-mumbai",
+      "rules": "storage.rules"
+    },
+    {
+      "bucket": "aarogya-orbit.firebasestorage.app",
+      "rules": "storage.rules"
+    }
   ],
-  "functions": [{ "source": "functions", "codebase": "default" }]
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default"
+    }
+  ]
 }

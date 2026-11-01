@@ -1,0 +1,12 @@
+<!doctype html><html lang="en"><head><title>AAROGYA ORBIT – My schedule</title><meta name="robots" content="noindex,nofollow"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#18251D"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"><link rel="stylesheet" href="/css/app.css"></head><body>
+<header class="header"><div class="container"><a href="/dashboard.html"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><button class="btn btn-ghost" id="logout" data-i18n="dash.logout"></button></div></div></header>
+<nav class="subnav" aria-label="Account"><div class="container"><a href="/dashboard.html" data-i18n="nav.home"></a><a href="/schedule.html" aria-current="page" data-i18n="dash.cardSchedule"></a></div></nav>
+<main class="container page" id="app" hidden>
+<h1 data-i18n="sch.title"></h1><p class="sub" data-i18n="sch.sub"></p>
+<section class="panel"><div id="msg" class="msg" role="alert" aria-live="polite" hidden></div>
+<form id="form" novalidate>
+<div class="field"><label for="slot" data-i18n="sch.slot"></label><select id="slot"></select></div>
+<div id="days"></div>
+<button class="btn btn-primary" id="save" type="submit" style="margin-top:16px" data-i18n="sch.save"></button>
+</form></section></main>
+<script type="module" src="/js/schedule.js"></script></body></html>
