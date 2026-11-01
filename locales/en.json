@@ -1,0 +1,15 @@
+{
+ "brand":"AAROGYA ORBIT","tagline":"Healthcare, All Connected.",
+ "nav.login":"Log in","nav.signup":"Sign up","nav.home":"Home","nav.doctors":"Doctors","nav.tests":"Tests","nav.records":"Records",
+ "hero.title":"Doctors, labs and hospitals in one place",
+ "hero.sub":"Book doctor visits, compare lab test prices and keep your reports safe. Now in Udaipur.",
+ "search.placeholder":"Search doctor, test or hospital","search.city":"Udaipur, Rajasthan","search.button":"Search",
+ "sec.services":"What you can do",
+ "svc.doctor":"Book a doctor","svc.doctor.d":"Find verified doctors and choose a real, open time slot.",
+ "svc.lab":"Compare lab tests","svc.lab.d":"See prices from labs near you, side by side.",
+ "svc.home":"Home sample collection","svc.home.d":"Book a collection at home where the lab offers it.",
+ "svc.records":"Your health records","svc.records.d":"Store reports privately and share only with your consent.",
+ "empty.doctors":"Doctors will appear here once they are verified in Udaipur.",
+ "notice.ai":"This platform does not diagnose or prescribe. In an emergency, call 112.",
+ "footer.legal":"Privacy · Terms · Contact"
+}
