@@ -1,0 +1,2 @@
+{"hosting":{"public":".","ignore":["firebase.json","**/.*","README.md","functions/**","firestore.rules","storage.rules"],"headers":[{"source":"**","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"}]}]},
+"firestore":{"rules":"firestore.rules"},"storage":{"rules":"storage.rules"}}

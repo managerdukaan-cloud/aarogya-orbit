@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn(){ return request.auth != null; }
+    function role(){ return request.auth.token.role; }   // set ONLY via Cloud Function custom claims
+    function isAdmin(){ return signedIn() && role() == 'admin'; }
+
+    // Profile: users edit own doc but can never set their own role.
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid && !('role' in request.resource.data);
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).unchangedKeys().hasAll(['role']) || isAdmin();
+    }
+    match /family_members/{id} {
+      allow read, write: if signedIn() && request.auth.uid == resource.data.ownerUid;
+      allow create: if signedIn() && request.auth.uid == request.resource.data.ownerUid;
+    }
+    // Public catalogue (admin-managed)
+    match /specialities/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /service_areas/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /diagnostic_tests/{id} { allow read: if true; allow write: if isAdmin(); }
+    // Everything else denied until its phase adds explicit rules.
+    match /{document=**} { allow read, write: if false; }
+  }
+}
