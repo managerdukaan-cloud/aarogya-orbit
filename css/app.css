@@ -15,7 +15,7 @@ a.card{display:block;text-decoration:none;color:inherit}
 .fam .btn{min-height:40px;padding:0 16px;font-size:14px}
 .btn.danger{color:var(--error)}
 .btns{display:flex;gap:10px;flex-wrap:wrap}.btns .btn{flex:1 1 140px}
-.day{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:start;padding:12px 0;border-bottom:1px solid var(--border)}
+.day{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:start;padding:12px 0;border-bottom:1px solid var(--border)}
 .day:last-of-type{border-bottom:0}
 .day label.on{display:flex;align-items:center;gap:8px;font-weight:600;min-height:44px}
 .day label.on input{width:22px;height:22px;accent-color:var(--graphite)}
@@ -34,3 +34,13 @@ a.card{display:block;text-decoration:none;color:inherit}
 .dr details{margin-top:6px;font-size:14px}
 .dr summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-weight:600}
 .tag{display:inline-block;background:var(--mint-soft);border-radius:999px;font-size:12px;padding:2px 10px;font-weight:600}
+a.btn{text-decoration:none}
+.dr summary::after{content:"\25BE";margin-left:6px}
+.dr .btn{margin-top:8px;min-height:44px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:44px;padding:0 14px;border-radius:12px;border:1.5px solid var(--border);background:var(--white);font:600 14px var(--font);color:var(--graphite);cursor:pointer;transition:background .15s,color .15s}
+.chip[aria-pressed=true]{background:var(--graphite);color:var(--mint);border-color:var(--graphite)}
+.chip:disabled{opacity:.4;text-decoration:line-through;cursor:not-allowed}
+.step{margin:18px 0 8px;font-weight:600}
+.status{display:inline-block;border-radius:999px;font-size:12px;font-weight:600;padding:2px 10px;background:var(--mint-soft)}
+.status.cancelled{background:#FCE8E8;color:#8E2626}

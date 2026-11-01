@@ -83,3 +83,73 @@ exports.getApplicationDocument = onCall(REGION, async (req) => {
   await admin.firestore().collection('audit_logs').add({ action: 'document_viewed', targetUid: uid, by: req.auth.uid, at: FieldValue.serverTimestamp() });
   return { contentType: meta.contentType || 'application/octet-stream', data: buf.toString('base64') };
 });
+
+// ---------------- Appointments ----------------
+// All booking rules run here on the server. The browser can never write an appointment or a slot directly.
+const DAYKEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+const toMins = (s) => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
+const pad = (n) => String(n).padStart(2, '0');
+function istNow() { // Indian Standard Time, whatever the server clock says
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()).map(x => [x.type, x.value]));
+  return { date: `${p.year}-${p.month}-${p.day}`, mins: +p.hour * 60 + +p.minute };
+}
+function validSlots(sch, date) {
+  const out = [];
+  for (const r of sch.weekly?.[DAYKEYS[new Date(date + 'T00:00:00Z').getUTCDay()]] || [])
+    for (let m = toMins(r.start); m + sch.slotMinutes <= toMins(r.end); m += sch.slotMinutes) out.push(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`);
+  return out;
+}
+
+exports.bookAppointment = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  if (req.auth.token.role !== 'patient') throw new HttpsError('permission-denied', 'Only patients can book.');
+  const { doctorUid, date, time, memberId } = req.data || {};
+  if (typeof doctorUid !== 'string' || typeof memberId !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !/^\d{2}:\d{2}$/.test(time || ''))
+    throw new HttpsError('invalid-argument', 'Bad request.');
+  const now = istNow();
+  const daysAhead = (new Date(date + 'T00:00:00Z') - new Date(now.date + 'T00:00:00Z')) / 864e5;
+  if (!(daysAhead >= 0 && daysAhead <= 30)) throw new HttpsError('failed-precondition', 'Date not available.');
+  if (date === now.date && toMins(time) < now.mins + 30) throw new HttpsError('failed-precondition', 'Time has passed.');
+
+  const db = admin.firestore();
+  const [d, s] = await Promise.all([db.doc(`doctors/${doctorUid}`).get(), db.doc(`doctor_schedules/${doctorUid}`).get()]);
+  if (!d.exists || d.data().verified !== true || d.data().active === false || d.data().city !== 'Udaipur') throw new HttpsError('not-found', 'Doctor not available.');
+  if (!s.exists || !validSlots(s.data(), date).includes(time)) throw new HttpsError('invalid-argument', 'Not a valid slot.');
+
+  let memberName, memberType = 'self';
+  if (memberId === 'self') { const u = await db.doc(`users/${req.auth.uid}`).get(); memberName = u.data()?.name || 'Patient'; }
+  else {
+    const f = await db.doc(`family_members/${memberId}`).get();
+    if (!f.exists || f.data().ownerUid !== req.auth.uid || f.data().status !== 'active') throw new HttpsError('permission-denied', 'Not your family member.');
+    memberName = f.data().name; memberType = 'family';
+  }
+  const lockId = `${doctorUid}_${date}_${time.replace(':', '')}`;
+  const lockRef = db.doc(`booked_slots/${lockId}`), apptRef = db.collection('appointments').doc();
+  await db.runTransaction(async (tx) => {
+    if ((await tx.get(lockRef)).exists) throw new HttpsError('already-exists', 'Slot taken.'); // double-booking guard
+    tx.set(lockRef, { doctorUid, date, time, createdAt: FieldValue.serverTimestamp() });
+    tx.set(apptRef, {
+      patientUid: req.auth.uid, memberId, memberType, memberName, doctorUid, doctorName: d.data().name, clinicName: d.data().clinicName,
+      date, time, fee: d.data().fee, paymentMode: 'pay_at_clinic', status: 'pending', lockId, createdAt: FieldValue.serverTimestamp()
+    });
+  });
+  return { id: apptRef.id };
+});
+
+exports.cancelAppointment = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  const id = req.data?.id; if (typeof id !== 'string') throw new HttpsError('invalid-argument', 'Bad request.');
+  const db = admin.firestore(), ref = db.doc(`appointments/${id}`);
+  await db.runTransaction(async (tx) => {
+    const a = await tx.get(ref);
+    if (!a.exists) throw new HttpsError('not-found', 'Not found.');
+    const x = a.data(), uid = req.auth.uid;
+    if (![x.patientUid, x.doctorUid].includes(uid) && req.auth.token.role !== 'admin') throw new HttpsError('permission-denied', 'Not allowed.');
+    if (!['pending', 'confirmed', 'rescheduled'].includes(x.status)) throw new HttpsError('failed-precondition', 'Cannot cancel.');
+    const now = istNow();
+    if (x.patientUid === uid && (x.date < now.date || (x.date === now.date && toMins(x.time) <= now.mins))) throw new HttpsError('failed-precondition', 'Already started.');
+    tx.update(ref, { status: 'cancelled', cancelledBy: uid, cancelledAt: FieldValue.serverTimestamp() });
+    tx.delete(db.doc(`booked_slots/${x.lockId}`)); // frees the slot for someone else
+  });
+  return { ok: true };
+});

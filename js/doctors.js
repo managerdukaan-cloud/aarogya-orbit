@@ -1,5 +1,7 @@
 import { db } from './firebase-init.js';
 import { initLang, setLang, t, getLang } from './i18n.js';
+import { auth } from './firebase-init.js';
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const $ = (id) => document.getElementById(id);
@@ -9,6 +11,7 @@ const specName = (id) => { const s = specs[id]; return !s ? '' : (getLang() === 
 
 document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', async () => { await setLang(b.dataset.lang); fillFilters(); render(); }));
 await initLang();
+const loggedIn = await new Promise(r => { const u = onAuthStateChanged(auth, x => { u(); r(!!x); }); });
 const [d, s, sp] = await Promise.all([getDocs(collection(db, 'doctors')), getDocs(collection(db, 'doctor_schedules')), getDocs(collection(db, 'specialities'))]);
 docs = d.docs.map(x => ({ id: x.id, ...x.data() })).filter(x => x.verified === true && x.active !== false);
 s.docs.forEach(x => sched[x.id] = x.data());
@@ -45,7 +48,12 @@ function render() {
     const tm = timings(x.id), det = document.createElement('details'), sm = document.createElement('summary');
     sm.textContent = t('dr.avail'); det.append(sm);
     if (tm?.length) tm.forEach(l => det.append(line('', l))); else det.append(line('meta', t('dr.noSched')));
-    c.append(det, line('tag', t('dr.bookSoon')));
+    c.append(det);
+    if (tm?.length) {
+      const a = document.createElement('a'); a.className = 'btn btn-primary';
+      a.href = loggedIn ? `/book.html?d=${encodeURIComponent(x.id)}` : '/auth.html';
+      a.textContent = t(loggedIn ? 'bk.book' : 'bk.loginToBook'); c.append(a);
+    } else c.append(line('tag', t('dr.noBook')));
     box.append(c);
   }
 }
