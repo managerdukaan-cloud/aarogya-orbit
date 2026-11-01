@@ -1,0 +1,28 @@
+<!doctype html><html lang="en"><head><title>AAROGYA ORBIT – Join as a doctor</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#18251D"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"><link rel="stylesheet" href="/css/app.css"></head><body>
+<header class="header"><div class="container"><a href="/dashboard.html"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><button class="btn btn-ghost" id="logout" data-i18n="dash.logout"></button></div></div></header>
+<nav class="subnav" aria-label="Account"><div class="container"><a href="/dashboard.html" data-i18n="nav.home" ></a><a href="/family.html" data-i18n="nav.family" ></a><a href="/profile.html" data-i18n="nav.profile" ></a></div></nav>
+<main class="container page" id="app" hidden>
+<h1 data-i18n="doc.title"></h1><p class="sub" data-i18n="doc.sub"></p>
+<div id="status" class="msg" hidden></div>
+<section class="panel" id="formWrap"><div id="msg" class="msg" role="alert" aria-live="polite" hidden></div>
+<p class="notice" id="noSpec" hidden data-i18n="doc.noSpec"></p>
+<form id="form" novalidate>
+<div class="field"><label for="name" data-i18n="doc.name"></label><input id="name" type="text" maxlength="80"></div>
+<div class="row2">
+<div class="field"><label for="phone" data-i18n="prof.phone"></label><input id="phone" type="tel" inputmode="numeric" maxlength="10"></div>
+<div class="field"><label for="speciality" data-i18n="doc.speciality"></label><select id="speciality"></select></div></div>
+<div class="field"><label for="qualification" data-i18n="doc.qual"></label><input id="qualification" type="text" maxlength="120"></div>
+<div class="row2">
+<div class="field"><label for="experience" data-i18n="doc.exp"></label><input id="experience" type="text" inputmode="numeric" maxlength="2"></div>
+<div class="field"><label for="fee" data-i18n="doc.fee"></label><input id="fee" type="text" inputmode="numeric" maxlength="5"></div></div>
+<div class="row2">
+<div class="field"><label for="regNumber" data-i18n="doc.reg"></label><input id="regNumber" type="text" maxlength="40"></div>
+<div class="field"><label for="council" data-i18n="doc.council"></label><input id="council" type="text" maxlength="80"></div></div>
+<div class="field"><label for="clinicName" data-i18n="doc.clinic"></label><input id="clinicName" type="text" maxlength="100"></div>
+<div class="field"><label for="address" data-i18n="doc.address"></label><textarea id="address" maxlength="250"></textarea></div>
+<div class="field"><label for="languages" data-i18n="doc.langs"></label><input id="languages" type="text" maxlength="80"></div>
+<div class="field"><label for="cert" data-i18n="doc.cert"></label><input id="cert" type="file" accept="application/pdf,image/jpeg,image/png"><div class="hint" id="certHave" hidden data-i18n="doc.certHave"></div></div>
+<label class="check"><input type="checkbox" id="consent"><span data-i18n="doc.consent"></span></label>
+<button class="btn btn-primary" id="save" type="submit"><span id="spin" class="loader" hidden></span><span data-i18n="doc.submit"></span></button>
+</form></section></main>
+<script type="module" src="/js/doctor-apply.js"></script></body></html>

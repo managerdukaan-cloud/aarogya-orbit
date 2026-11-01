@@ -4,19 +4,50 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function isAdmin()  { return signedIn() && request.auth.token.role == 'admin'; }
 
-    // Profiles are created and role-assigned ONLY by the ensureProfile Cloud Function.
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow create: if false;
+      allow create, delete: if false;
       allow update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.uid == resource.data.uid;
-      allow delete: if false;
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['name','phone','dob','gender','language','updatedAt']);
     }
     match /family_members/{id} {
-      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
-      allow read, update, delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.consentConfirmed == true
+        && request.resource.data.status == 'active'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 80;
+      allow read: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow update: if signedIn() && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.consentConfirmed == true;
+      allow delete: if false;
     }
+
+    // Doctor applications: the applicant writes their own; only the reviewApplication Cloud Function can approve or reject.
+    match /doctor_applications/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.consentConfirmed == true
+        && request.resource.data.keys().hasOnly(['uid','name','phone','speciality','qualification','experience','regNumber','council','clinicName','address','fee','languages','documents','status','consentConfirmed','createdAt','updatedAt'])
+        && request.resource.data.experience is number && request.resource.data.fee is number
+        && request.resource.data.fee >= 0 && request.resource.data.fee <= 100000
+        && request.resource.data.name is string && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 80;
+      allow update: if signedIn() && request.auth.uid == uid
+        && resource.data.status in ['pending','rejected']
+        && request.resource.data.status == 'pending'
+        && request.resource.data.consentConfirmed == true
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['name','phone','speciality','qualification','experience','regNumber','council','clinicName','address','fee','languages','documents','status','updatedAt'])
+        && request.resource.data.fee is number && request.resource.data.fee >= 0 && request.resource.data.fee <= 100000;
+      allow delete: if false;
+    }
+    // Public verified profiles. Written only by the Cloud Function after admin approval.
+    match /doctors/{id} { allow read: if true; allow write: if false; }
+
     match /specialities/{id}     { allow read: if true; allow write: if isAdmin(); }
     match /service_areas/{id}    { allow read: if true; allow write: if isAdmin(); }
     match /diagnostic_tests/{id} { allow read: if true; allow write: if isAdmin(); }

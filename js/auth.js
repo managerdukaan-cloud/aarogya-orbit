@@ -7,6 +7,5 @@ export async function finishLogin(user) {
   await user.getIdToken(true); // pick up the new role claim
   return res.data; // { role, name }
 }
-// One place to decide where each role lands. Other portals are added in later phases.
-export const routeFor = (role) => '/dashboard.html';
+export const routeFor = (role) => role === 'admin' ? '/admin.html' : '/dashboard.html';
 export const firstName = (n) => (n || '').trim().split(/\s+/)[0] || '';

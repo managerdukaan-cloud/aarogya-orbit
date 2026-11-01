@@ -1,9 +1,14 @@
-<!doctype html><html lang="en"><head><title>AAROGYA ORBIT – Dashboard</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#18251D"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"></head><body>
-<header class="header"><div class="container"><a href="/"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><button class="btn btn-ghost" id="logout" data-i18n="dash.logout"></button></div></div></header>
+<!doctype html><html lang="en"><head><title>AAROGYA ORBIT – Dashboard</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#18251D"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"><link rel="stylesheet" href="/css/app.css"></head><body>
+<header class="header"><div class="container"><a href="/dashboard.html"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><button class="btn btn-ghost" id="logout" data-i18n="dash.logout"></button></div></div></header>
+<nav class="subnav" aria-label="Account"><div class="container"><a href="/dashboard.html" data-i18n="nav.home" aria-current="page"></a><a href="/family.html" data-i18n="nav.family" ></a><a href="/profile.html" data-i18n="nav.profile" ></a></div></nav>
 <main class="container dash" id="app" hidden>
 <h1 id="greet"></h1><p style="margin:8px 0 24px"><span class="badge" id="role"></span></p>
-<p class="notice" id="soon" hidden data-i18n="dash.soon"></p>
+<p class="notice" id="soon" hidden></p>
+<div id="adminBox" class="grid" hidden><a class="card" href="/admin.html"><h3 data-i18n="dash.cardAdmin"></h3><p data-i18n="dash.cardAdmin.d"></p></a></div>
 <div id="patientBox" class="grid">
+<a class="card" href="/profile.html"><h3 data-i18n="dash.cardProfile"></h3><p data-i18n="dash.cardProfile.d"></p></a>
+<a class="card" href="/family.html"><h3 data-i18n="dash.cardFamily"></h3><p data-i18n="dash.cardFamily.d"></p></a>
 <article class="card"><h3 data-i18n="svc.doctor"></h3><p data-i18n="dash.emptyAppt"></p></article>
-<article class="card"><h3 data-i18n="svc.records"></h3><p data-i18n="dash.emptyRec"></p></article></div>
+<article class="card"><h3 data-i18n="svc.records"></h3><p data-i18n="dash.emptyRec"></p></article>
+<a class="card" href="/doctor-apply.html"><h3 data-i18n="dash.cardApply"></h3><p data-i18n="dash.cardApply.d"></p></a></div>
 </main><script type="module" src="/js/dashboard.js"></script></body></html>
