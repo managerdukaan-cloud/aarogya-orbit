@@ -1,0 +1,10 @@
+:root{
+  --graphite:#18251D; --mint:#B7FF72; --white:#fff; --bg:#F7F9F6; --muted:#708477;
+  --mint-soft:#EAF8DC; --surface-dark:#22342A; --border:#E4EAE3;
+  --success:#269B63; --warning:#E9A23B; --error:#DC5252;
+  --font:'Poppins','Noto Sans Devanagari',system-ui,sans-serif;
+  --r-sm:10px; --r-md:16px; --r-lg:24px;
+  --emboss:6px 6px 14px rgba(24,37,29,.10),-6px -6px 14px rgba(255,255,255,.9);
+  --emboss-in:inset 3px 3px 8px rgba(24,37,29,.10),inset -3px -3px 8px rgba(255,255,255,.9);
+  --ease:cubic-bezier(.22,.8,.3,1);
+}
