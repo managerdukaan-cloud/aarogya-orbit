@@ -1,26 +1,26 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
-    function signedIn(){ return request.auth != null; }
-    function role(){ return request.auth.token.role; }   // set ONLY via Cloud Function custom claims
-    function isAdmin(){ return signedIn() && role() == 'admin'; }
+    function signedIn() { return request.auth != null; }
+    function isAdmin()  { return signedIn() && request.auth.token.role == 'admin'; }
 
-    // Profile: users edit own doc but can never set their own role.
+    // Profiles are created and role-assigned ONLY by the ensureProfile Cloud Function.
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow create: if signedIn() && request.auth.uid == uid && !('role' in request.resource.data);
+      allow create: if false;
       allow update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).unchangedKeys().hasAll(['role']) || isAdmin();
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.uid == resource.data.uid;
+      allow delete: if false;
     }
     match /family_members/{id} {
-      allow read, write: if signedIn() && request.auth.uid == resource.data.ownerUid;
-      allow create: if signedIn() && request.auth.uid == request.resource.data.ownerUid;
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow read, update, delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
     }
-    // Public catalogue (admin-managed)
-    match /specialities/{id} { allow read: if true; allow write: if isAdmin(); }
-    match /service_areas/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /specialities/{id}     { allow read: if true; allow write: if isAdmin(); }
+    match /service_areas/{id}    { allow read: if true; allow write: if isAdmin(); }
     match /diagnostic_tests/{id} { allow read: if true; allow write: if isAdmin(); }
-    // Everything else denied until its phase adds explicit rules.
+    match /audit_logs/{id}       { allow read: if isAdmin(); allow write: if false; }
     match /{document=**} { allow read, write: if false; }
   }
 }
