@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><title>AAROGYA ORBIT – Lab bookings</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#18251D"><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"><link rel="stylesheet" href="/css/app.css"></head><body>
+<header class="header"><div class="container"><a href="/dashboard.html"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><button class="btn btn-ghost" id="logout" data-i18n="dash.logout"></button></div></div></header>
+<nav class="subnav" aria-label="Laboratory"><div class="container"><a href="/dashboard.html" data-i18n="nav.home"></a><a href="/lab-bookings.html" data-i18n="lab.nBookings" aria-current="page"></a><a href="/lab-pricing.html" data-i18n="lab.nPricing" ></a><a href="/lab-settings.html" data-i18n="lab.nHours" ></a></div></nav>
+<main class="container page" id="app" hidden style="max-width:860px">
+<h1 data-i18n="lab.nBookings"></h1><p class="sub" data-i18n="lab.bookSub"></p>
+<div class="filters" style="grid-template-columns:minmax(0,260px)"><select id="filter"><option value="active" data-i18n="dap.filterActive"></option><option value="all" data-i18n="dap.filterAll"></option></select></div>
+<div id="msg" class="msg" role="status" aria-live="polite" hidden></div>
+<p class="notice" id="empty" hidden data-i18n="dap.empty"></p>
+<div class="grid" id="list" style="grid-template-columns:1fr"></div>
+</main><script type="module" src="/js/lab-bookings.js"></script></body></html>

@@ -1,10 +1,26 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Doctor verification documents: private. Owner uploads, owner or admin can read. Never public.
+    // Doctor verification documents: private. Owner uploads, owner or admin can read.
     match /doctor_docs/{uid}/{file} {
       allow read: if request.auth != null && (request.auth.uid == uid || request.auth.token.role == 'admin');
       allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('application/pdf|image/(jpeg|png)');
+      allow update, delete: if false;
+    }
+    // Laboratory verification documents: same rules.
+    match /lab_docs/{uid}/{file} {
+      allow read: if request.auth != null && (request.auth.uid == uid || request.auth.token.role == 'admin');
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('application/pdf|image/(jpeg|png)');
+      allow update, delete: if false;
+    }
+    // Lab reports: only the lab uploads (create only, no overwrite). Patients download through the getReportFile Cloud Function.
+    match /lab_reports/{labUid}/{bookingId}/{file} {
+      allow read: if request.auth != null && request.auth.uid == labUid;
+      allow create: if request.auth != null && request.auth.uid == labUid && request.auth.token.role == 'lab'
         && request.resource.size < 5 * 1024 * 1024
         && request.resource.contentType.matches('application/pdf|image/(jpeg|png)');
       allow update, delete: if false;

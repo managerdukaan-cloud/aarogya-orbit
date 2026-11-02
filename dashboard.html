@@ -1,17 +1,21 @@
 <!doctype html><html lang="en"><head><title>AAROGYA ORBIT – Dashboard</title><meta name="robots" content="noindex,nofollow"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#18251D"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"><link rel="stylesheet" href="/css/app.css"></head><body>
 <header class="header"><div class="container"><a href="/dashboard.html"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><button class="btn btn-ghost" id="logout" data-i18n="dash.logout"></button></div></div></header>
-<nav class="subnav" aria-label="Account"><div class="container"><a href="/dashboard.html" data-i18n="nav.home" aria-current="page"></a><a href="/appointments.html" data-i18n="nav.appts"></a><a href="/family.html" data-i18n="nav.family"></a><a href="/profile.html" data-i18n="nav.profile"></a></div></nav>
+<nav class="subnav" aria-label="Account"><div class="container"><a href="/dashboard.html" data-i18n="nav.home" aria-current="page"></a><a href="/tests.html" data-i18n="nav.tests"></a><a href="/appointments.html" data-i18n="nav.appts"></a><a href="/my-tests.html" data-i18n="nav.myTests"></a><a href="/family.html" data-i18n="nav.family"></a><a href="/profile.html" data-i18n="nav.profile"></a></div></nav>
 <main class="container dash" id="app" hidden>
 <h1 id="greet"></h1><p style="margin:8px 0 24px"><span class="badge" id="role"></span></p>
 <p class="notice" id="soon" hidden style="margin-bottom:16px"></p>
-<div id="adminBox" class="grid" hidden><a class="card" href="/admin.html"><h3 data-i18n="dash.cardAdmin"></h3><p data-i18n="dash.cardAdmin.d"></p></a></div>
+<div id="adminBox" class="grid" hidden><a class="card" href="/admin.html"><h3 data-i18n="dash.cardAdmin"></h3><p data-i18n="dash.cardAdmin.d"></p></a><a class="card" href="/admin-tests.html"><h3 data-i18n="adm.catalogue"></h3><p data-i18n="adm.catNote"></p></a></div>
 <div id="doctorBox" class="grid" hidden><a class="card" href="/doctor-appointments.html"><h3 data-i18n="dash.cardDAppts"></h3><p data-i18n="dash.cardDAppts.d"></p></a><a class="card" href="/schedule.html"><h3 data-i18n="dash.cardSchedule"></h3><p data-i18n="dash.cardSchedule.d"></p></a></div>
+<div id="labBox" class="grid" hidden><a class="card" href="/lab-bookings.html"><h3 data-i18n="lab.nBookings"></h3><p data-i18n="lab.bookSub"></p></a><a class="card" href="/lab-pricing.html"><h3 data-i18n="lab.nPricing"></h3><p data-i18n="lab.priceSub"></p></a><a class="card" href="/lab-settings.html"><h3 data-i18n="lab.nHours"></h3><p data-i18n="lab.hoursSub"></p></a></div>
 <div id="patientBox" class="grid">
 <a class="card" href="/doctors.html"><h3 data-i18n="dash.cardFind"></h3><p data-i18n="dash.cardFind.d"></p></a>
+<a class="card" href="/tests.html"><h3 data-i18n="dash.cardTests"></h3><p data-i18n="dash.cardTests.d"></p></a>
+<a class="card" href="/my-tests.html"><h3 data-i18n="nav.myTests"></h3><p data-i18n="dash.cardMyTests.d"></p></a>
 <a class="card" href="/profile.html"><h3 data-i18n="dash.cardProfile"></h3><p data-i18n="dash.cardProfile.d"></p></a>
 <a class="card" href="/family.html"><h3 data-i18n="dash.cardFamily"></h3><p data-i18n="dash.cardFamily.d"></p></a>
 <a class="card" href="/appointments.html"><h3 data-i18n="dash.cardAppt"></h3><p data-i18n="dash.cardAppt.d"></p></a>
 <a class="card" href="/prescriptions.html"><h3 data-i18n="dash.cardRx"></h3><p data-i18n="dash.cardRx.d"></p></a>
 <article class="card"><h3 data-i18n="svc.records"></h3><p data-i18n="dash.emptyRec"></p></article>
+<a class="card" href="/lab-apply.html"><h3 data-i18n="dash.cardLabApply"></h3><p data-i18n="dash.cardLabApply.d"></p></a>
 <a class="card" href="/doctor-apply.html"><h3 data-i18n="dash.cardApply"></h3><p data-i18n="dash.cardApply.d"></p></a></div>
 </main><script type="module" src="/js/dashboard.js"></script></body></html>

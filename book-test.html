@@ -1,0 +1,20 @@
+<!doctype html><html lang="en"><head><title>AAROGYA ORBIT – Book a test</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#18251D"><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"><link rel="stylesheet" href="/css/app.css"></head><body>
+<header class="header"><div class="container"><a href="/dashboard.html"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><button class="btn btn-ghost" id="logout" data-i18n="dash.logout"></button></div></div></header>
+<nav class="subnav" aria-label="Account"><div class="container"><a href="/dashboard.html" data-i18n="nav.home"></a><a href="/doctors.html" data-i18n="nav.doctors"></a><a href="/tests.html" data-i18n="nav.tests" aria-current="page"></a><a href="/appointments.html" data-i18n="nav.appts"></a><a href="/my-tests.html" data-i18n="nav.myTests" ></a></div></nav>
+<main class="container page" id="app" hidden>
+<h1 data-i18n="dbk.title"></h1><p class="sub" id="with"></p>
+<p class="notice" id="blocked" hidden></p>
+<section class="panel" id="formWrap"><div id="msg" class="msg" role="alert" aria-live="polite" hidden></div>
+<p class="step" data-i18n="dbk.type"></p><div class="chips" id="types"></div>
+<p class="step" data-i18n="bk.for"></p><select id="member" aria-label="Patient" style="width:100%;min-height:48px;border:0;border-radius:10px;padding:0 12px;font:400 16px var(--font);background:var(--bg);box-shadow:var(--emboss-in)"></select>
+<div class="field" style="margin-top:14px"><label for="phone" data-i18n="dbk.phone"></label><input id="phone" type="tel" inputmode="numeric" maxlength="10"></div>
+<div id="addrBox" hidden>
+<div class="field"><label for="line" data-i18n="dbk.addr"></label><textarea id="line" maxlength="200"></textarea></div>
+<div class="field"><label for="apin" data-i18n="lab.pin"></label><input id="apin" type="text" inputmode="numeric" maxlength="6"></div></div>
+<p class="step" data-i18n="bk.pickDate"></p><div class="chips" id="dates"></div>
+<p class="step" data-i18n="bk.pickTime"></p><div class="chips" id="times"></div><p class="hint" id="noSlots" hidden data-i18n="bk.noSlots"></p>
+<p class="notice" style="margin:18px 0" id="priceNote"></p>
+<button class="btn btn-primary" id="confirm" type="button" disabled><span id="spin" class="loader" hidden></span><span data-i18n="bk.confirm"></span></button>
+</section>
+<section class="panel" id="done" hidden><div class="msg ok" data-i18n="dbk.done"></div><p id="summary" style="margin:12px 0"></p><a class="btn btn-primary" href="/my-tests.html" data-i18n="dbk.view"></a></section>
+</main><script type="module" src="/js/book-test.js"></script></body></html>

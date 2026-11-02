@@ -13,7 +13,8 @@ function paint() {
   $('patientBox').hidden = role !== 'patient';
   $('adminBox').hidden = role !== 'admin';
   $('doctorBox').hidden = role !== 'doctor';
-  $('soon').hidden = ['patient', 'admin'].includes(role);
+  $('labBox').hidden = role !== 'lab';
+  $('soon').hidden = ['patient', 'admin', 'lab'].includes(role);
   $('soon').textContent = t(role === 'doctor' ? 'dash.doctorSoon' : 'dash.soon');
 }
 const user = await requireUser(paint);

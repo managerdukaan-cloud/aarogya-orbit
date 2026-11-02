@@ -215,3 +215,196 @@ exports.createPrescription = onCall(REGION, async (req) => {
   });
   return { id: appointmentId };
 });
+
+// =====================================================================
+// DIAGNOSTICS: lab verification, bookings, sample status, reports
+// =====================================================================
+const BUCKET = 'aarogya-orbit-mumbai';
+const bucket = () => admin.storage().bucket(BUCKET);
+
+// ---- Admin approves or rejects a laboratory application ----
+exports.reviewLabApplication = onCall(REGION, async (req) => {
+  requireAdmin(req);
+  const { uid, decision, reason, accreditationVerified } = req.data || {};
+  if (typeof uid !== 'string' || !['approve', 'reject'].includes(decision)) throw new HttpsError('invalid-argument', 'Bad request.');
+  if (decision === 'reject' && !(typeof reason === 'string' && reason.trim().length >= 5 && reason.length <= 300))
+    throw new HttpsError('invalid-argument', 'A reason of 5 to 300 characters is required.');
+  const db = admin.firestore(), appRef = db.doc(`lab_applications/${uid}`), userRef = db.doc(`users/${uid}`);
+  await db.runTransaction(async (tx) => {
+    const [a, u] = await Promise.all([tx.get(appRef), tx.get(userRef)]);
+    if (!a.exists || a.data().status !== 'pending') throw new HttpsError('failed-precondition', 'Application is not pending.');
+    if (u.exists && u.data().role !== 'patient') throw new HttpsError('failed-precondition', 'This account already has another role.');
+    const d = a.data(), review = { reviewedBy: req.auth.uid, reviewedAt: FieldValue.serverTimestamp() };
+    if (decision === 'approve') {
+      tx.update(appRef, { status: 'approved', ...review });
+      // Public profile. Licence number and documents stay private. Accreditation shows as verified only if the admin confirmed it.
+      tx.set(db.doc(`labs/${uid}`), {
+        uid, name: d.name, address: d.address, pin: d.pin, phone: d.phone, homeCollection: d.homeCollection === true,
+        accreditation: d.accreditation || '', accreditationVerified: accreditationVerified === true && !!d.accreditation,
+        city: 'Udaipur', verified: true, active: true, verifiedAt: FieldValue.serverTimestamp()
+      });
+      tx.set(userRef, { role: 'lab' }, { merge: true });
+    } else tx.update(appRef, { status: 'rejected', rejectReason: reason.trim(), ...review });
+    tx.set(db.collection('audit_logs').doc(), { action: decision === 'approve' ? 'lab_approved' : 'lab_rejected', targetUid: uid, by: req.auth.uid, at: FieldValue.serverTimestamp() });
+  });
+  if (decision === 'approve') await admin.auth().setCustomUserClaims(uid, { role: 'lab' });
+  return { ok: true };
+});
+
+exports.getLabApplicationDocument = onCall(REGION, async (req) => {
+  requireAdmin(req);
+  const { uid, path } = req.data || {};
+  if (typeof uid !== 'string' || typeof path !== 'string' || !path.startsWith(`lab_docs/${uid}/`)) throw new HttpsError('invalid-argument', 'Bad request.');
+  const a = await admin.firestore().doc(`lab_applications/${uid}`).get();
+  if (!a.exists || !(a.data().documents || []).some(d => d.path === path)) throw new HttpsError('not-found', 'Document not found.');
+  const file = bucket().file(path);
+  const [[buf], [meta]] = await Promise.all([file.download(), file.getMetadata()]);
+  if (buf.length > 6 * 1024 * 1024) throw new HttpsError('failed-precondition', 'File too large.');
+  await admin.firestore().collection('audit_logs').add({ action: 'document_viewed', targetUid: uid, by: req.auth.uid, at: FieldValue.serverTimestamp() });
+  return { contentType: meta.contentType || 'application/octet-stream', data: buf.toString('base64') };
+});
+
+// ---- Patient books a test. Prices, areas, capacity and slots are all decided here, never by the browser. ----
+exports.bookDiagnostic = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  if (req.auth.token.role !== 'patient') throw new HttpsError('permission-denied', 'Only patients can book.');
+  const { labUid, testIds, memberId, type, date, time, phone, address } = req.data || {};
+  if (typeof labUid !== 'string' || !Array.isArray(testIds) || testIds.length < 1 || testIds.length > 10 || new Set(testIds).size !== testIds.length
+    || testIds.some(x => typeof x !== 'string') || typeof memberId !== 'string' || !['home', 'lab'].includes(type)
+    || !/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !/^\d{2}:\d{2}$/.test(time || '') || !/^[6-9]\d{9}$/.test(phone || ''))
+    throw new HttpsError('invalid-argument', 'Bad request.');
+  const now = istNow();
+  const ahead = (new Date(date + 'T00:00:00Z') - new Date(now.date + 'T00:00:00Z')) / 864e5;
+  if (!(ahead >= 0 && ahead <= 14)) throw new HttpsError('failed-precondition', 'Date not available.');
+  if (date === now.date && toMins(time) < now.mins + 60) throw new HttpsError('failed-precondition', 'Time has passed.');
+
+  const db = admin.firestore();
+  const [labS, setS] = await Promise.all([db.doc(`labs/${labUid}`).get(), db.doc(`lab_settings/${labUid}`).get()]);
+  if (!labS.exists || labS.data().verified !== true || labS.data().active === false || labS.data().city !== 'Udaipur') throw new HttpsError('not-found', 'Lab not available.');
+  const lab = labS.data();
+  if (!setS.exists || !validSlots(setS.data(), date).includes(time)) throw new HttpsError('invalid-argument', 'Not a valid slot.');
+  const settings = setS.data();
+
+  const tests = []; let total = 0;
+  for (const id of testIds) {
+    const [t, p] = await Promise.all([db.doc(`diagnostic_tests/${id}`).get(), db.doc(`lab_pricing/${labUid}_${id}`).get()]);
+    if (!t.exists || t.data().active === false || !p.exists || p.data().active === false) throw new HttpsError('not-found', 'Test not offered by this lab.');
+    if (type === 'home' && p.data().homeCollection !== true) throw new HttpsError('failed-precondition', 'Home collection not available for this test.');
+    tests.push({ testId: id, name_en: t.data().name_en, name_hi: t.data().name_hi || '', price: p.data().price }); total += p.data().price;
+  }
+  let addr = null;
+  if (type === 'home') {
+    if (lab.homeCollection !== true) throw new HttpsError('failed-precondition', 'Lab does not offer home collection.');
+    const line = clip(address?.line, 200), pin = clip(address?.pin, 6);
+    if (line.length < 5 || !/^\d{6}$/.test(pin)) throw new HttpsError('invalid-argument', 'Address needed.');
+    const area = await db.doc(`service_areas/${pin}`).get();
+    if (!area.exists || area.data().active !== true || !(settings.collectionPins || []).includes(pin)) throw new HttpsError('out-of-range', 'Area not served.');
+    addr = { line, pin };
+  }
+  let memberName, memberType = 'self';
+  if (memberId === 'self') { const u = await db.doc(`users/${req.auth.uid}`).get(); memberName = u.data()?.name || 'Patient'; }
+  else {
+    const f = await db.doc(`family_members/${memberId}`).get();
+    if (!f.exists || f.data().ownerUid !== req.auth.uid || f.data().status !== 'active') throw new HttpsError('permission-denied', 'Not your family member.');
+    memberName = f.data().name; memberType = 'family';
+  }
+  const slotId = `${labUid}_${date}_${time.replace(':', '')}`, countRef = db.doc(`lab_slot_counts/${slotId}`), bookRef = db.collection('diagnostic_bookings').doc();
+  await db.runTransaction(async (tx) => {
+    const c = (await tx.get(countRef)).data()?.count || 0;
+    if (c >= (settings.capacity || 1)) throw new HttpsError('already-exists', 'Slot full.'); // capacity guard
+    tx.set(countRef, { labUid, date, time, count: c + 1 });
+    tx.set(bookRef, {
+      patientUid: req.auth.uid, memberId, memberType, memberName, contactPhone: phone, labUid, labName: lab.name, tests, total,
+      type, address: addr, date, time, slotId, status: 'confirmed', paymentMode: type === 'home' ? 'pay_at_collection' : 'pay_at_lab',
+      createdAt: FieldValue.serverTimestamp()
+    });
+  });
+  return { id: bookRef.id };
+});
+
+const NEXT_HOME = { confirmed: ['collection_assigned', 'cancelled'], collection_assigned: ['en_route', 'cancelled'], en_route: ['arrived', 'cancelled'], arrived: ['sample_collected', 'cancelled'], sample_collected: ['received_at_lab'], received_at_lab: ['processing'] };
+const NEXT_LAB = { confirmed: ['sample_collected', 'cancelled'], sample_collected: ['processing'] };
+
+async function moveBooking(req, id, status, who) {
+  const db = admin.firestore(), ref = db.doc(`diagnostic_bookings/${id}`);
+  await db.runTransaction(async (tx) => {
+    const b = await tx.get(ref);
+    if (!b.exists) throw new HttpsError('not-found', 'Not found.');
+    const x = b.data(), uid = req.auth.uid;
+    if (who === 'lab' && x.labUid !== uid) throw new HttpsError('permission-denied', 'Not your booking.');
+    if (who === 'patient' && (x.patientUid !== uid || !['confirmed', 'collection_assigned'].includes(x.status) || status !== 'cancelled')) throw new HttpsError('permission-denied', 'Not allowed.');
+    const map = x.type === 'home' ? NEXT_HOME : NEXT_LAB;
+    if (!(map[x.status] || []).includes(status)) throw new HttpsError('failed-precondition', 'Not allowed from this status.');
+    const upd = { status, statusHistory: FieldValue.arrayUnion({ status, by: uid, at: admin.firestore.Timestamp.now() }) };
+    if (status === 'cancelled') {
+      const cRef = db.doc(`lab_slot_counts/${x.slotId}`), c = (await tx.get(cRef)).data()?.count || 0;
+      tx.set(cRef, { labUid: x.labUid, date: x.date, time: x.time, count: Math.max(0, c - 1) }); // frees the place
+      upd.cancelledBy = uid; upd.cancelledAt = FieldValue.serverTimestamp();
+    }
+    tx.update(ref, upd);
+  });
+  return { ok: true };
+}
+exports.updateDiagnosticStatus = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  if (req.auth.token.role !== 'lab') throw new HttpsError('permission-denied', 'Labs only.');
+  const { id, status } = req.data || {};
+  if (typeof id !== 'string' || typeof status !== 'string') throw new HttpsError('invalid-argument', 'Bad request.');
+  return moveBooking(req, id, status, 'lab');
+});
+exports.cancelDiagnosticBooking = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  const id = req.data?.id; if (typeof id !== 'string') throw new HttpsError('invalid-argument', 'Bad request.');
+  return moveBooking(req, id, 'cancelled', 'patient');
+});
+
+// ---- Lab publishes a report. A re-publish is an amendment: the old version is kept with the reason. ----
+exports.publishReport = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  if (req.auth.token.role !== 'lab') throw new HttpsError('permission-denied', 'Labs only.');
+  const { bookingId, paths, amendReason } = req.data || {};
+  const uid = req.auth.uid;
+  if (typeof bookingId !== 'string' || !Array.isArray(paths) || paths.length < 1 || paths.length > 3) throw new HttpsError('invalid-argument', 'Bad request.');
+  for (const p of paths) {
+    if (typeof p !== 'string' || !p.startsWith(`lab_reports/${uid}/${bookingId}/`)) throw new HttpsError('invalid-argument', 'Bad file path.');
+    if (!(await bucket().file(p).exists())[0]) throw new HttpsError('not-found', 'File not uploaded.');
+  }
+  const db = admin.firestore(), bRef = db.doc(`diagnostic_bookings/${bookingId}`), rRef = db.doc(`lab_reports/${bookingId}`);
+  await db.runTransaction(async (tx) => {
+    const [b, r] = await Promise.all([tx.get(bRef), tx.get(rRef)]);
+    if (!b.exists || b.data().labUid !== uid) throw new HttpsError('permission-denied', 'Not your booking.');
+    const x = b.data();
+    if (!['processing', 'report_ready'].includes(x.status)) throw new HttpsError('failed-precondition', 'Sample is not in processing.');
+    const files = paths.map(p => ({ path: p, name: p.split('/').pop().replace(/^\d+-/, '') }));
+    let amendments = [];
+    if (r.exists) {
+      if (!(typeof amendReason === 'string' && amendReason.trim().length >= 5 && amendReason.length <= 300)) throw new HttpsError('invalid-argument', 'Amendment reason required.');
+      amendments = [...(r.data().amendments || []), { files: r.data().files, reason: amendReason.trim(), by: uid, replacedAt: admin.firestore.Timestamp.now() }];
+    }
+    tx.set(rRef, {
+      bookingId, labUid: uid, labName: x.labName, patientUid: x.patientUid, memberName: x.memberName, tests: x.tests.map(t => ({ name_en: t.name_en, name_hi: t.name_hi })),
+      files, amendments, publishedBy: uid, publishedAt: FieldValue.serverTimestamp()
+    });
+    tx.update(bRef, { status: 'report_ready', reportId: bookingId, statusHistory: FieldValue.arrayUnion({ status: 'report_ready', by: uid, at: admin.firestore.Timestamp.now() }) });
+    tx.set(db.collection('audit_logs').doc(), { action: r.exists ? 'report_amended' : 'report_published', targetUid: x.patientUid, bookingId, by: uid, at: FieldValue.serverTimestamp() });
+  });
+  return { ok: true };
+});
+
+// ---- Private report download. Never a public link. Every view is logged as access history. ----
+exports.getReportFile = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  const { bookingId, path } = req.data || {};
+  if (typeof bookingId !== 'string' || typeof path !== 'string') throw new HttpsError('invalid-argument', 'Bad request.');
+  const db = admin.firestore();
+  const [b, r] = await Promise.all([db.doc(`diagnostic_bookings/${bookingId}`).get(), db.doc(`lab_reports/${bookingId}`).get()]);
+  if (!b.exists || !r.exists) throw new HttpsError('not-found', 'Report not found.');
+  const uid = req.auth.uid, x = b.data();
+  if (![x.patientUid, x.labUid].includes(uid) && req.auth.token.role !== 'admin') throw new HttpsError('permission-denied', 'Not allowed.');
+  if (!(r.data().files || []).some(f => f.path === path)) throw new HttpsError('not-found', 'File not found.');
+  const file = bucket().file(path);
+  const [[buf], [meta]] = await Promise.all([file.download(), file.getMetadata()]);
+  if (buf.length > 6 * 1024 * 1024) throw new HttpsError('failed-precondition', 'File too large.');
+  await db.collection('audit_logs').add({ action: 'report_viewed', targetUid: x.patientUid, bookingId, by: uid, at: FieldValue.serverTimestamp() });
+  return { contentType: meta.contentType || 'application/octet-stream', data: buf.toString('base64') };
+});

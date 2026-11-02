@@ -1,0 +1,22 @@
+<!doctype html><html lang="en"><head><title>AAROGYA ORBIT – Register your lab</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#18251D"><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"><link rel="stylesheet" href="/css/app.css"></head><body>
+<header class="header"><div class="container"><a href="/dashboard.html"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><button class="btn btn-ghost" id="logout" data-i18n="dash.logout"></button></div></div></header>
+<nav class="subnav" aria-label="Account"><div class="container"><a href="/dashboard.html" data-i18n="nav.home"></a></div></nav>
+<main class="container page" id="app" hidden>
+<h1 data-i18n="lab.applyTitle"></h1><p class="sub" data-i18n="lab.applySub"></p>
+<div id="status" class="msg" hidden></div>
+<p class="notice" id="blocked" hidden data-i18n="lab.patientOnly"></p>
+<section class="panel" id="formWrap"><div id="msg" class="msg" role="alert" aria-live="polite" hidden></div>
+<form id="form" novalidate>
+<div class="field"><label for="name" data-i18n="lab.name"></label><input id="name" type="text" maxlength="100"></div>
+<div class="row2"><div class="field"><label for="ownerName" data-i18n="lab.owner"></label><input id="ownerName" type="text" maxlength="80"></div>
+<div class="field"><label for="phone" data-i18n="prof.phone"></label><input id="phone" type="tel" inputmode="numeric" maxlength="10"></div></div>
+<div class="field"><label for="address" data-i18n="lab.address"></label><textarea id="address" maxlength="250"></textarea></div>
+<div class="row2"><div class="field"><label for="pin" data-i18n="lab.pin"></label><input id="pin" type="text" inputmode="numeric" maxlength="6"></div>
+<div class="field"><label for="licenseNo" data-i18n="lab.licence"></label><input id="licenseNo" type="text" maxlength="60"></div></div>
+<div class="field"><label for="accreditation" data-i18n="lab.accredOpt"></label><input id="accreditation" type="text" maxlength="100"><div class="hint" data-i18n="lab.accredNote"></div></div>
+<label class="check"><input type="checkbox" id="homeCollection"><span data-i18n="lab.homeOffer"></span></label>
+<div class="field"><label for="cert" data-i18n="lab.doc"></label><input id="cert" type="file" accept="application/pdf,image/jpeg,image/png"><div class="hint" id="certHave" hidden data-i18n="doc.certHave"></div></div>
+<label class="check"><input type="checkbox" id="consent"><span data-i18n="lab.consent"></span></label>
+<button class="btn btn-primary" id="save" type="submit"><span id="spin" class="loader" hidden></span><span data-i18n="doc.submit"></span></button>
+</form></section></main>
+<script type="module" src="/js/lab-apply.js"></script></body></html>

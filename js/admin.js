@@ -1,64 +1,86 @@
 import { db, functions } from './firebase-init.js';
 import { t, getLang } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { collection, query, where, getDocs, writeBatch, doc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { $, el } from './util.js';
+import { collection, query, where, getDocs, writeBatch, setDoc, doc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
-const $ = (id) => document.getElementById(id);
-let pending = [], specs = [];
-const user = await requireUser(() => { renderList(); renderSpecCount(); });
+let pending = [], labs = [], specs = [], areas = [];
+const user = await requireUser(() => { renderAll(); });
 // The server re-checks the admin role on every action. This client check only avoids showing a useless page.
 if ((await user.getIdTokenResult(true)).claims.role !== 'admin') location.replace('/dashboard.html');
-
 const specName = (id) => { const s = specs.find(x => x.id === id); return !s ? id : (getLang() === 'hi' && s.name_hi ? s.name_hi : s.name_en); };
 const call = (name, data) => httpsCallable(functions, name)(data).then(r => r.data);
 
 async function load() {
-  const [a, s] = await Promise.all([getDocs(query(collection(db, 'doctor_applications'), where('status', '==', 'pending'))), getDocs(collection(db, 'specialities'))]);
-  pending = a.docs.map(d => ({ id: d.id, ...d.data() }));
-  specs = s.docs.map(d => ({ id: d.id, ...d.data() }));
-  renderList(); renderSpecCount();
+  const [a, l, s, ar] = await Promise.all([
+    getDocs(query(collection(db, 'doctor_applications'), where('status', '==', 'pending'))),
+    getDocs(query(collection(db, 'lab_applications'), where('status', '==', 'pending'))),
+    getDocs(collection(db, 'specialities')), getDocs(collection(db, 'service_areas'))]);
+  pending = a.docs.map(d => ({ id: d.id, ...d.data() })); labs = l.docs.map(d => ({ id: d.id, ...d.data() }));
+  specs = s.docs.map(d => ({ id: d.id, ...d.data() })); areas = ar.docs.map(d => ({ id: d.id, ...d.data() })).sort((x, y) => x.id.localeCompare(y.id));
+  renderAll();
 }
-function line(label, value) { const p = document.createElement('p'); const b = document.createElement('strong'); b.textContent = label + ': '; p.append(b, document.createTextNode(value)); return p; }
-function renderList() {
-  const list = $('list'); list.replaceChildren(); $('none').hidden = pending.length > 0;
-  for (const a of pending) {
-    const c = document.createElement('article'); c.className = 'card fam';
-    const h = document.createElement('h3'); h.textContent = a.name; c.append(h,
-      line(t('doc.speciality'), specName(a.speciality)), line(t('doc.qual'), a.qualification),
-      line(t('doc.reg'), a.regNumber), line(t('doc.council'), a.council), line(t('doc.exp'), String(a.experience)),
-      line(t('doc.fee'), '₹' + a.fee), line(t('doc.clinic'), a.clinicName), line(t('doc.address'), a.address),
-      line(t('prof.phone'), a.phone), line(t('doc.langs'), (a.languages || []).join(', ')));
-    const act = document.createElement('div'); act.className = 'actions';
-    const mk = (cls, label, fn) => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = t(label); b.onclick = () => fn(b); return b; };
-    act.append(
-      mk('btn-ghost', 'adm.view', (b) => viewDoc(a, b)),
-      mk('btn-primary', 'adm.approve', (b) => decide(a, 'approve', b)),
-      mk('btn-ghost danger', 'adm.reject', (b) => decide(a, 'reject', b)));
-    c.append(act); list.append(c);
-  }
-}
-async function viewDoc(a, btn) {
-  const w = window.open('', '_blank'); // opened first so the popup blocker allows it
-  btn.disabled = true;
+const line = (label, value) => { const p = el('p'); p.append(el('strong', '', label + ': '), document.createTextNode(value || '-')); return p; };
+async function viewDoc(fn, a, btn) {
+  const w = window.open('', '_blank'); btn.disabled = true; // opened first so the popup blocker allows it
   try {
-    const r = await call('getApplicationDocument', { uid: a.id, path: a.documents[0].path });
+    const r = await call(fn, { uid: a.id, path: a.documents[0].path });
     const bytes = Uint8Array.from(atob(r.data), c => c.charCodeAt(0));
-    const url = URL.createObjectURL(new Blob([bytes], { type: r.contentType }));
-    if (w) w.location = url;
+    if (w) w.location = URL.createObjectURL(new Blob([bytes], { type: r.contentType }));
   } catch { w?.close(); say('msg', 'err.generic', false, t); }
   btn.disabled = false;
 }
-async function decide(a, decision, btn) {
-  let reason = '';
+function buttons(card, a, fn, decide, viewFn) {
+  const act = el('div', 'actions');
+  const mk = (cls, label, f) => { const b = el('button', 'btn ' + cls, t(label)); b.onclick = () => f(b); return b; };
+  act.append(mk('btn-ghost', 'adm.view', (b) => viewDoc(viewFn, a, b)), mk('btn-primary', 'adm.approve', (b) => decide(a, 'approve', b)), mk('btn-ghost danger', 'adm.reject', (b) => decide(a, 'reject', b)));
+  card.append(act);
+}
+function renderAll() {
+  $('none').hidden = pending.length > 0; $('noneLab').hidden = labs.length > 0;
+  const dl = $('list'); dl.replaceChildren();
+  for (const a of pending) {
+    const c = el('article', 'card fam'); c.append(el('h3', '', a.name),
+      line(t('doc.speciality'), specName(a.speciality)), line(t('doc.qual'), a.qualification), line(t('doc.reg'), a.regNumber), line(t('doc.council'), a.council),
+      line(t('doc.exp'), String(a.experience)), line(t('doc.fee'), '₹' + a.fee), line(t('doc.clinic'), a.clinicName), line(t('doc.address'), a.address),
+      line(t('prof.phone'), a.phone), line(t('doc.langs'), (a.languages || []).join(', ')));
+    buttons(c, a, 'getApplicationDocument', (x, d, b) => decide('reviewApplication', x, d, b), 'getApplicationDocument'); dl.append(c);
+  }
+  const ll = $('labList'); ll.replaceChildren();
+  for (const a of labs) {
+    const c = el('article', 'card fam'); c.append(el('h3', '', a.name),
+      line(t('lab.owner'), a.ownerName), line(t('prof.phone'), a.phone), line(t('lab.address'), `${a.address} - ${a.pin}`),
+      line(t('lab.licence'), a.licenseNo), line(t('lab.accred'), a.accreditation), line(t('lab.home'), t(a.homeCollection ? 'yes' : 'no')));
+    buttons(c, a, 'getLabApplicationDocument', (x, d, b) => decide('reviewLabApplication', x, d, b), 'getLabApplicationDocument'); ll.append(c);
+  }
+  const al = $('areaList'); al.replaceChildren();
+  for (const a of areas) {
+    const r = el('div', 'row'); r.style.margin = '6px 0';
+    r.append(el('span', '', `${a.id} ${a.area || ''}`), el('span', 'status' + (a.active ? '' : ' cancelled'), t(a.active ? 'adm.active' : 'adm.off')));
+    const b = el('button', 'btn btn-ghost', t(a.active ? 'adm.turnOff' : 'adm.turnOn')); b.style.minHeight = '36px';
+    b.onclick = async () => { await setDoc(doc(db, 'service_areas', a.id), { active: !a.active }, { merge: true }); await load(); };
+    r.append(b); al.append(r);
+  }
+  $('specCount').textContent = t('adm.specCount').replace('{n}', specs.length);
+}
+async function decide(fn, a, decision, btn) {
+  let reason = '', accreditationVerified = false;
   if (decision === 'reject') { reason = (prompt(t('adm.reasonPrompt')) || '').trim(); if (reason.length < 5) return; }
-  else if (!confirm(t('adm.confirmApprove'))) return;
+  else {
+    if (!confirm(t(fn === 'reviewLabApplication' ? 'adm.confirmLab' : 'adm.confirmApprove'))) return;
+    if (fn === 'reviewLabApplication' && a.accreditation) accreditationVerified = confirm(t('adm.accredAsk'));
+  }
   btn.disabled = true;
-  try { await call('reviewApplication', { uid: a.id, decision, reason }); say('msg', 'adm.done', true, t); await load(); }
+  try { await call(fn, { uid: a.id, decision, reason, accreditationVerified }); say('msg', 'adm.done', true, t); await load(); }
   catch { say('msg', 'err.generic', false, t); btn.disabled = false; }
 }
-function renderSpecCount() { $('specCount').textContent = t('adm.specCount').replace('{n}', specs.length); }
-
+$('addArea').onclick = async () => {
+  const pin = $('pin').value.trim();
+  if (!/^\d{6}$/.test(pin)) return say('msg', 'adm.badPin', false, t);
+  try { await setDoc(doc(db, 'service_areas', pin), { pin, area: $('area').value.trim(), city: 'Udaipur', active: true }, { merge: true }); $('pin').value = ''; $('area').value = ''; await load(); }
+  catch { say('msg', 'err.generic', false, t); }
+};
 // One-time starter list. After seeding, specialities live in the database and are managed there.
 const DEFAULTS = [
  ['General Physician','सामान्य चिकित्सक'],['Cardiologist','हृदय रोग विशेषज्ञ'],['Dermatologist','त्वचा रोग विशेषज्ञ'],

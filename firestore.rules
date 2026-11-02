@@ -74,6 +74,54 @@ service cloud.firestore {
       allow write: if false;
     }
 
+
+    // ---- Diagnostics ----
+    match /lab_applications/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.uid == uid
+        && request.resource.data.status == 'pending' && request.resource.data.consentConfirmed == true
+        && request.resource.data.keys().hasOnly(['uid','name','ownerName','phone','address','pin','licenseNo','accreditation','homeCollection','documents','status','consentConfirmed','createdAt','updatedAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 100;
+      allow update: if signedIn() && request.auth.uid == uid && resource.data.status in ['pending','rejected']
+        && request.resource.data.status == 'pending' && request.resource.data.consentConfirmed == true
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['name','ownerName','phone','address','pin','licenseNo','accreditation','homeCollection','documents','status','updatedAt']);
+      allow delete: if false;
+    }
+    match /labs/{id} { allow read: if true; allow write: if false; }
+    match /lab_settings/{uid} {
+      allow read: if true;
+      allow create, update: if signedIn() && request.auth.uid == uid && request.auth.token.role == 'lab'
+        && request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly(['uid','weekly','slotMinutes','capacity','collectionPins','updatedAt'])
+        && request.resource.data.slotMinutes in [30,60,120]
+        && request.resource.data.capacity is int && request.resource.data.capacity >= 1 && request.resource.data.capacity <= 20
+        && request.resource.data.collectionPins is list && request.resource.data.collectionPins.size() <= 30;
+      allow delete: if false;
+    }
+    match /lab_pricing/{id} {
+      allow read: if true;
+      allow create, update: if signedIn() && request.auth.token.role == 'lab'
+        && request.resource.data.labUid == request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.testId
+        && request.resource.data.keys().hasOnly(['labUid','testId','price','originalPrice','turnaroundHours','homeCollection','active','updatedAt'])
+        && request.resource.data.price is number && request.resource.data.price > 0 && request.resource.data.price <= 100000
+        && request.resource.data.originalPrice is number && request.resource.data.originalPrice >= 0 && request.resource.data.originalPrice <= 100000
+        && request.resource.data.turnaroundHours is int && request.resource.data.turnaroundHours >= 1 && request.resource.data.turnaroundHours <= 720
+        && request.resource.data.homeCollection is bool;
+      allow delete: if signedIn() && request.auth.token.role == 'lab' && resource.data.labUid == request.auth.uid;
+    }
+    match /lab_slot_counts/{id} { allow read: if true; allow write: if false; }
+    match /diagnostic_bookings/{id} {
+      allow read: if signedIn() && (resource.data.patientUid == request.auth.uid || resource.data.labUid == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+    match /lab_reports/{id} {
+      allow read: if signedIn() && (resource.data.patientUid == request.auth.uid || resource.data.labUid == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+    match /diagnostic_categories/{id} { allow read: if true; allow write: if isAdmin(); }
+
     match /specialities/{id}     { allow read: if true; allow write: if isAdmin(); }
     match /service_areas/{id}    { allow read: if true; allow write: if isAdmin(); }
     match /diagnostic_tests/{id} { allow read: if true; allow write: if isAdmin(); }

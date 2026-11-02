@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><head><title>Compare lab prices – AAROGYA ORBIT</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#18251D"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"><link rel="stylesheet" href="/css/app.css"></head><body>
+<header class="header"><div class="container"><a href="/"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><a class="btn btn-dark" href="/auth.html" data-i18n="nav.login"></a></div></div></header>
+<main class="container page wide">
+<p><a href="/tests.html" data-i18n="tt.back"></a></p>
+<h1 id="title"></h1><p class="sub" id="sub"></p>
+<section class="panel" id="info"></section>
+<div class="filters" style="grid-template-columns:minmax(0,260px)"><select id="sort" aria-label="Sort"><option value="price" data-i18n="cmp.sortPrice"></option><option value="tat" data-i18n="cmp.sortTat"></option></select></div>
+<p class="notice" id="empty" hidden data-i18n="cmp.none"></p>
+<div class="grid" id="list" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))"></div>
+<p class="mini" style="margin-top:16px" data-i18n="cmp.note"></p>
+</main><script type="module" src="/js/compare.js"></script></body></html>
