@@ -1,0 +1,22 @@
+User-agent: *
+Allow: /
+# Private areas are never indexed (their pages also carry a noindex tag)
+Disallow: /dashboard.html
+Disallow: /auth.html
+Disallow: /admin
+Disallow: /lab-
+Disallow: /hospital-portal.html
+Disallow: /hospital-apply.html
+Disallow: /doctor-
+Disallow: /schedule.html
+Disallow: /records.html
+Disallow: /shared-records.html
+Disallow: /appointments.html
+Disallow: /my-tests.html
+Disallow: /prescription
+Disallow: /book
+Disallow: /profile.html
+Disallow: /family.html
+Disallow: /support.html
+Disallow: /notifications.html
+Sitemap: https://aarogya-orbit.web.app/sitemap.xml

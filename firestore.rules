@@ -122,6 +122,70 @@ service cloud.firestore {
     }
     match /diagnostic_categories/{id} { allow read: if true; allow write: if isAdmin(); }
 
+
+    // ---- Medical records, consent and access history (Phase 13) ----
+    match /medical_records/{id} {
+      allow read: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid && request.resource.data.status == 'active'
+        && request.resource.data.keys().hasOnly(['ownerUid','memberId','memberName','category','title','recordDate','file','status','createdAt'])
+        && request.resource.data.category in ['blood','diagnostic','prescription','xray','mri_ct','discharge','other']
+        && request.resource.data.title is string && request.resource.data.title.size() >= 2 && request.resource.data.title.size() <= 100
+        && request.resource.data.file.path.matches('records/' + request.auth.uid + '/.*');
+      allow update: if signedIn() && resource.data.ownerUid == request.auth.uid && request.resource.data.status == 'removed'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','removedAt']);
+      allow delete: if false;
+    }
+    match /consents/{id} {
+      allow read: if signedIn() && (resource.data.ownerUid == request.auth.uid || resource.data.doctorUid == request.auth.uid);
+      allow write: if false;
+    }
+    match /record_access/{id} { allow read: if signedIn() && resource.data.ownerUid == request.auth.uid; allow write: if false; }
+
+    // ---- Hospitals and clinics (Phase 14) ----
+    match /hospital_applications/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid && request.resource.data.uid == uid
+        && request.resource.data.status == 'pending' && request.resource.data.consentConfirmed == true
+        && request.resource.data.keys().hasOnly(['uid','name','type','contactName','phone','address','pin','registrationNo','departments','documents','status','consentConfirmed','createdAt','updatedAt'])
+        && request.resource.data.type in ['hospital','clinic']
+        && request.resource.data.departments is list && request.resource.data.departments.size() <= 20
+        && request.resource.data.name is string && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 100;
+      allow update: if signedIn() && request.auth.uid == uid && resource.data.status in ['pending','rejected']
+        && request.resource.data.status == 'pending' && request.resource.data.consentConfirmed == true
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['name','type','contactName','phone','address','pin','registrationNo','departments','documents','status','updatedAt'])
+        && request.resource.data.departments.size() <= 20;
+      allow delete: if false;
+    }
+    match /hospitals/{id} {
+      allow read: if true;
+      allow update: if signedIn() && request.auth.uid == id && request.auth.token.role == 'hospital'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['departments','phone','updatedAt'])
+        && request.resource.data.departments is list && request.resource.data.departments.size() <= 20;
+      allow create, delete: if false;
+    }
+    match /hospital_links/{id} {
+      allow read: if resource.data.status == 'active' || (signedIn() && (resource.data.hospitalUid == request.auth.uid || resource.data.doctorUid == request.auth.uid || isAdmin()));
+      allow write: if false;
+    }
+
+    // ---- Support tickets and notifications (Phase 15, 16) ----
+    match /support_tickets/{id} {
+      allow read: if signedIn() && (resource.data.ownerUid == request.auth.uid || isAdmin());
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid && request.resource.data.status == 'open'
+        && request.resource.data.keys().hasOnly(['ownerUid','ownerName','role','subject','message','status','replies','createdAt','updatedAt'])
+        && request.resource.data.subject is string && request.resource.data.subject.size() >= 3 && request.resource.data.subject.size() <= 100
+        && request.resource.data.message is string && request.resource.data.message.size() >= 5 && request.resource.data.message.size() <= 1000
+        && request.resource.data.replies.size() == 0;
+      allow update, delete: if false;
+    }
+    match /notifications/{id} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      allow update: if signedIn() && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow create, delete: if false;
+    }
+
     match /specialities/{id}     { allow read: if true; allow write: if isAdmin(); }
     match /service_areas/{id}    { allow read: if true; allow write: if isAdmin(); }
     match /diagnostic_tests/{id} { allow read: if true; allow write: if isAdmin(); }

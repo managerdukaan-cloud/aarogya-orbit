@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>AAROGYA ORBIT – Healthcare, All Connected.</title>
-<meta name="description" content="Book doctors, compare diagnostic test prices and manage health records in Udaipur.">
+<meta name="description" content="Book verified doctors, compare lab test prices and keep your health records private in Udaipur.">
+<meta property="og:title" content="AAROGYA ORBIT – Healthcare, All Connected."><meta property="og:description" content="Doctors, labs and hospitals in one place, in Udaipur."><meta property="og:type" content="website">
 <meta name="theme-color" content="#18251D">
 <link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml">
 <link rel="manifest" href="/manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css">
+<link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
 <div id="splash" role="status" aria-label="Loading">
@@ -18,43 +19,50 @@
   <strong style="font-size:24px;letter-spacing:1px" data-i18n="brand">AAROGYA ORBIT</strong>
   <div class="tag" data-i18n="tagline">Healthcare, All Connected.</div>
 </div>
-
 <header class="header"><div class="container">
   <img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT">
-  <div class="nav-actions">
-    <div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div>
-    <a class="btn btn-dark" href="/auth.html" data-i18n="nav.login">Log in</a>
-  </div>
+  <div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><a class="btn btn-dark" href="/auth.html" data-i18n="nav.login">Log in</a></div>
 </div></header>
-
 <main>
 <section class="hero"><div class="container">
   <h1 data-i18n="hero.title"></h1>
   <p data-i18n="hero.sub"></p>
-  <div class="search" role="search">
-    <input type="search" data-i18n-ph="search.placeholder" aria-label="Search">
-    <select aria-label="City"><option data-i18n="search.city">Udaipur, Rajasthan</option></select>
-    <button class="btn btn-primary" data-i18n="search.button">Search</button>
-  </div>
+  <div class="row"><a class="btn btn-primary" href="/doctors.html" data-i18n="home.findDoctor"></a><a class="btn btn-ghost" style="color:#fff;border-color:#4b6355" href="/tests.html" data-i18n="home.findTests"></a></div>
 </div></section>
 
 <section class="section"><div class="container">
   <h2 data-i18n="sec.services"></h2>
   <div class="grid">
-    <article class="card"><h3 data-i18n="svc.doctor"></h3><p data-i18n="svc.doctor.d"></p></article>
-    <article class="card"><h3 data-i18n="svc.lab"></h3><p data-i18n="svc.lab.d"></p></article>
-    <article class="card"><h3 data-i18n="svc.home"></h3><p data-i18n="svc.home.d"></p></article>
-    <article class="card"><h3 data-i18n="svc.records"></h3><p data-i18n="svc.records.d"></p></article>
+    <a class="card" href="/doctors.html"><h3 data-i18n="svc.doctor"></h3><p data-i18n="svc.doctor.d"></p></a>
+    <a class="card" href="/tests.html"><h3 data-i18n="svc.lab"></h3><p data-i18n="svc.lab.d"></p></a>
+    <a class="card" href="/tests.html"><h3 data-i18n="svc.home"></h3><p data-i18n="svc.home.d"></p></a>
+    <a class="card" href="/hospitals.html"><h3 data-i18n="nav.hospitals"></h3><p data-i18n="hs.sub"></p></a>
+    <a class="card" href="/auth.html"><h3 data-i18n="svc.records"></h3><p data-i18n="svc.records.d"></p></a>
   </div>
 </div></section>
 
 <section class="section" style="padding-top:0"><div class="container">
-  <p class="notice" data-i18n="empty.doctors"></p>
-  <p class="notice" style="margin-top:12px" data-i18n="notice.ai"></p>
+  <h2 data-i18n="home.how"></h2>
+  <div class="grid">
+    <article class="card"><h3>1. <span data-i18n="home.s1"></span></h3><p data-i18n="home.s1d"></p></article>
+    <article class="card"><h3>2. <span data-i18n="home.s2"></span></h3><p data-i18n="home.s2d"></p></article>
+    <article class="card"><h3>3. <span data-i18n="home.s3"></span></h3><p data-i18n="home.s3d"></p></article>
+  </div>
+</div></section>
+
+<section class="section" style="padding-top:0"><div class="container">
+  <h2 data-i18n="home.why"></h2>
+  <div class="grid">
+    <article class="card"><h3 data-i18n="home.w1"></h3><p data-i18n="home.w1d"></p></article>
+    <article class="card"><h3 data-i18n="home.w2"></h3><p data-i18n="home.w2d"></p></article>
+    <article class="card"><h3 data-i18n="home.w3"></h3><p data-i18n="home.w3d"></p></article>
+    <article class="card"><h3 data-i18n="home.w4"></h3><p data-i18n="home.w4d"></p></article>
+  </div>
+  <p class="notice" style="margin-top:20px" data-i18n="notice.ai"></p>
 </div></section>
 </main>
-
-<footer class="footer"><div class="container"><strong data-i18n="brand"></strong> · <span data-i18n="tagline"></span><br><span data-i18n="footer.legal"></span></div></footer>
-<nav class="bottom-nav" aria-label="Main"><a href="#" data-i18n="nav.home">Home</a><a href="#" data-i18n="nav.doctors">Doctors</a><a href="#" data-i18n="nav.tests">Tests</a><a href="#" data-i18n="nav.records">Records</a></nav>
+<footer class="footer"><div class="container"><strong data-i18n="brand"></strong> · <span data-i18n="tagline"></span><br>
+<a href="/privacy.html" style="color:#cfdad2" data-i18n="lg.privacy"></a> · <a href="/terms.html" style="color:#cfdad2" data-i18n="lg.terms"></a> · <a href="/support.html" style="color:#cfdad2" data-i18n="nav.support"></a></div></footer>
+<nav class="bottom-nav" aria-label="Main"><a href="/" data-i18n="nav.home">Home</a><a href="/doctors.html" data-i18n="nav.doctors">Doctors</a><a href="/tests.html" data-i18n="nav.tests">Tests</a><a href="/hospitals.html" data-i18n="nav.hospitals">Hospitals</a></nav>
 <script type="module" src="/js/app.js"></script>
 </body></html>

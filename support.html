@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><title>AAROGYA ORBIT – Help and support</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#18251D"><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"><link rel="stylesheet" href="/css/app.css"></head><body>
+<header class="header"><div class="container"><a href="/dashboard.html"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><button class="btn btn-ghost" id="logout" data-i18n="dash.logout"></button></div></div></header>
+<nav class="subnav" aria-label="Account"><div class="container"><a href="/dashboard.html" data-i18n="nav.home"></a><a href="/support.html" data-i18n="nav.support" aria-current="page"></a></div></nav>
+<main class="container page" id="app" hidden>
+<h1 data-i18n="sp.title"></h1><p class="sub" data-i18n="sp.sub"></p>
+<p class="notice" data-i18n="notice.ai"></p>
+<div id="msg" class="msg" role="status" aria-live="polite" hidden style="margin-top:12px"></div>
+<section class="panel"><form id="form" novalidate>
+<div class="field"><label for="subject" data-i18n="sp.subject"></label><input id="subject" type="text" maxlength="100"></div>
+<div class="field"><label for="message" data-i18n="sp.message"></label><textarea id="message" maxlength="1000"></textarea></div>
+<button class="btn btn-primary" id="send" type="submit" data-i18n="sp.send"></button></form></section>
+<h2 class="sec" data-i18n="sp.mine"></h2>
+<p class="notice" id="empty" hidden data-i18n="sp.none"></p>
+<div class="grid" id="list" style="grid-template-columns:1fr"></div>
+</main><script type="module" src="/js/support.js"></script></body></html>

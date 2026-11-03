@@ -7,5 +7,5 @@ export async function finishLogin(user) {
   await user.getIdToken(true); // pick up the new role claim
   return res.data; // { role, name }
 }
-export const routeFor = (role) => role === 'admin' ? '/admin.html' : '/dashboard.html';
+export const routeFor = (role) => role === 'admin' ? '/admin-dashboard.html' : '/dashboard.html';
 export const firstName = (n) => (n || '').trim().split(/\s+/)[0] || '';

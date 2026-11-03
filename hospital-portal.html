@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><head><title>AAROGYA ORBIT – Hospital portal</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#18251D"><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"><link rel="stylesheet" href="/css/app.css"></head><body>
+<header class="header"><div class="container"><a href="/dashboard.html"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><button class="btn btn-ghost" id="logout" data-i18n="dash.logout"></button></div></div></header>
+<nav class="subnav" aria-label="Hospital"><div class="container"><a href="/dashboard.html" data-i18n="nav.home"></a><a href="/hospital-portal.html" data-i18n="hp.nav" aria-current="page"></a></div></nav>
+<main class="container page" id="app" hidden>
+<h1 id="hname"></h1><p class="sub" id="hmeta"></p>
+<div id="msg" class="msg" role="alert" aria-live="polite" hidden></div>
+<h2 class="sec" data-i18n="hp.depts"></h2>
+<section class="panel"><div class="field"><label for="departments" data-i18n="ha.depts"></label><input id="departments" type="text" maxlength="400"></div>
+<div class="field"><label for="phone" data-i18n="prof.phone"></label><input id="phone" type="tel" inputmode="numeric" maxlength="10"></div>
+<button class="btn btn-primary" id="saveInfo" type="button" data-i18n="prof.save"></button></section>
+<h2 class="sec" data-i18n="hp.doctors"></h2>
+<section class="panel"><p class="mini" data-i18n="hp.inviteNote"></p>
+<div class="row" style="margin:10px 0"><input id="reg" type="text" maxlength="40" data-i18n-ph="hp.regPh" style="min-height:46px;border-radius:10px;border:0;padding:0 12px;background:var(--bg);box-shadow:var(--emboss-in);font:400 16px var(--font)"><button class="btn btn-dark" id="invite" type="button" data-i18n="hp.invite"></button></div></section>
+<p class="notice" id="noneLinks" hidden data-i18n="hp.none"></p>
+<div class="grid" id="links" style="grid-template-columns:1fr"></div>
+</main><script type="module" src="/js/hospital-portal.js"></script></body></html>

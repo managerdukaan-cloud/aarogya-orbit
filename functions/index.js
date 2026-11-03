@@ -67,6 +67,7 @@ exports.reviewApplication = onCall(REGION, async (req) => {
     });
   });
   if (decision === 'approve') await admin.auth().setCustomUserClaims(uid, { role: 'doctor' });
+  await notify(uid, decision === 'approve' ? 'verified' : 'rejected');
   return { ok: true };
 });
 
@@ -133,6 +134,7 @@ exports.bookAppointment = onCall(REGION, async (req) => {
       date, time, fee: d.data().fee, paymentMode: 'pay_at_clinic', status: 'pending', lockId, createdAt: FieldValue.serverTimestamp()
     });
   });
+  await notify(req.auth.uid, 'appt_requested'); await notify(doctorUid, 'appt_new');
   return { id: apptRef.id };
 });
 
@@ -151,6 +153,7 @@ exports.cancelAppointment = onCall(REGION, async (req) => {
     tx.update(ref, { status: 'cancelled', cancelledBy: uid, cancelledAt: FieldValue.serverTimestamp() });
     tx.delete(db.doc(`booked_slots/${x.lockId}`)); // frees the slot for someone else
   });
+  { const a2 = (await ref.get()).data(); await notify(a2.cancelledBy === a2.patientUid ? a2.doctorUid : a2.patientUid, 'appt_cancelled'); }
   return { ok: true };
 });
 
@@ -179,6 +182,7 @@ exports.updateAppointmentStatus = onCall(REGION, async (req) => {
     if (status === 'cancelled') { upd.cancelledBy = req.auth.uid; upd.cancelledAt = FieldValue.serverTimestamp(); tx.delete(db.doc(`booked_slots/${x.lockId}`)); }
     tx.update(ref, upd);
   });
+  if (['confirmed', 'cancelled', 'completed'].includes(status)) await notify((await ref.get()).data().patientUid, 'appt_' + status);
   return { ok: true };
 });
 
@@ -213,6 +217,7 @@ exports.createPrescription = onCall(REGION, async (req) => {
     tx.update(apptRef, { prescriptionId: appointmentId });
     tx.set(db.collection('audit_logs').doc(), { action: 'prescription_issued', targetUid: x.patientUid, appointmentId, by: req.auth.uid, at: FieldValue.serverTimestamp() });
   });
+  await notify((await rxRef.get()).data().patientUid, 'rx_issued');
   return { id: appointmentId };
 });
 
@@ -248,6 +253,7 @@ exports.reviewLabApplication = onCall(REGION, async (req) => {
     tx.set(db.collection('audit_logs').doc(), { action: decision === 'approve' ? 'lab_approved' : 'lab_rejected', targetUid: uid, by: req.auth.uid, at: FieldValue.serverTimestamp() });
   });
   if (decision === 'approve') await admin.auth().setCustomUserClaims(uid, { role: 'lab' });
+  await notify(uid, decision === 'approve' ? 'verified' : 'rejected');
   return { ok: true };
 });
 
@@ -319,6 +325,7 @@ exports.bookDiagnostic = onCall(REGION, async (req) => {
       createdAt: FieldValue.serverTimestamp()
     });
   });
+  await notify(req.auth.uid, 'lab_booked'); await notify(labUid, 'lab_new');
   return { id: bookRef.id };
 });
 
@@ -343,6 +350,7 @@ async function moveBooking(req, id, status, who) {
     }
     tx.update(ref, upd);
   });
+  { const b2 = (await ref.get()).data(); await notify(who === 'lab' ? b2.patientUid : b2.labUid, who === 'lab' ? 'lab_status' : 'lab_cancelled'); }
   return { ok: true };
 }
 exports.updateDiagnosticStatus = onCall(REGION, async (req) => {
@@ -388,6 +396,7 @@ exports.publishReport = onCall(REGION, async (req) => {
     tx.update(bRef, { status: 'report_ready', reportId: bookingId, statusHistory: FieldValue.arrayUnion({ status: 'report_ready', by: uid, at: admin.firestore.Timestamp.now() }) });
     tx.set(db.collection('audit_logs').doc(), { action: r.exists ? 'report_amended' : 'report_published', targetUid: x.patientUid, bookingId, by: uid, at: FieldValue.serverTimestamp() });
   });
+  await notify((await bRef.get()).data().patientUid, 'report_ready');
   return { ok: true };
 });
 
@@ -407,4 +416,205 @@ exports.getReportFile = onCall(REGION, async (req) => {
   if (buf.length > 6 * 1024 * 1024) throw new HttpsError('failed-precondition', 'File too large.');
   await db.collection('audit_logs').add({ action: 'report_viewed', targetUid: x.patientUid, bookingId, by: uid, at: FieldValue.serverTimestamp() });
   return { contentType: meta.contentType || 'application/octet-stream', data: buf.toString('base64') };
+});
+
+// =====================================================================
+// NOTIFICATIONS (in-app). Text lives in the translation files, so each message shows in the user's language.
+// Messages never contain medical details: only that something happened. Best effort: a failure here never breaks the real action.
+// =====================================================================
+async function notify(uid, type, params = {}) {
+  try { await admin.firestore().collection('notifications').add({ uid, type, params, read: false, createdAt: FieldValue.serverTimestamp() }); }
+  catch (e) { console.error('notify failed', type, e.message); }
+}
+const count = async (q) => (await q.count().get()).data().count;
+
+// =====================================================================
+// PHASE 13: MEDICAL RECORDS, CONSENT SHARING, ACCESS HISTORY
+// =====================================================================
+const SHARE_DAYS = 30;
+async function logAccess(recordId, ownerUid, by, byRole, action) {
+  await admin.firestore().collection('record_access').add({ recordId, ownerUid, by, byRole, action, at: FieldValue.serverTimestamp() });
+}
+exports.shareRecord = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  if (req.auth.token.role !== 'patient') throw new HttpsError('permission-denied', 'Patients only.');
+  const { recordId, doctorUid } = req.data || {};
+  if (typeof recordId !== 'string' || typeof doctorUid !== 'string') throw new HttpsError('invalid-argument', 'Bad request.');
+  const db = admin.firestore(), uid = req.auth.uid;
+  const [rec, doc, appt] = await Promise.all([db.doc(`medical_records/${recordId}`).get(), db.doc(`doctors/${doctorUid}`).get(),
+    db.collection('appointments').where('patientUid', '==', uid).where('doctorUid', '==', doctorUid).limit(1).get()]);
+  if (!rec.exists || rec.data().ownerUid !== uid || rec.data().status !== 'active') throw new HttpsError('not-found', 'Record not found.');
+  if (!doc.exists || doc.data().verified !== true) throw new HttpsError('not-found', 'Doctor not found.');
+  if (appt.empty) throw new HttpsError('permission-denied', 'You can share only with doctors you have booked.'); // sharing is limited to your own doctors
+  const r = rec.data();
+  await db.doc(`consents/${recordId}_${doctorUid}`).set({
+    recordId, ownerUid: uid, doctorUid, doctorName: doc.data().name, title: r.title, category: r.category, memberName: r.memberName, recordDate: r.recordDate || '',
+    status: 'active', grantedAt: FieldValue.serverTimestamp(), expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + SHARE_DAYS * 864e5), revokedAt: null
+  });
+  await logAccess(recordId, uid, uid, 'patient', 'shared');
+  await notify(doctorUid, 'record_shared');
+  return { ok: true };
+});
+exports.revokeShare = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  const id = req.data?.consentId; if (typeof id !== 'string') throw new HttpsError('invalid-argument', 'Bad request.');
+  const ref = admin.firestore().doc(`consents/${id}`), c = await ref.get();
+  if (!c.exists || c.data().ownerUid !== req.auth.uid) throw new HttpsError('permission-denied', 'Not allowed.');
+  await ref.update({ status: 'revoked', revokedAt: FieldValue.serverTimestamp() });
+  await logAccess(c.data().recordId, req.auth.uid, req.auth.uid, 'patient', 'revoked');
+  return { ok: true };
+});
+// Owner, or a doctor holding an active, unexpired consent. Every view is written to the access history.
+exports.getRecordFile = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  const recordId = req.data?.recordId; if (typeof recordId !== 'string') throw new HttpsError('invalid-argument', 'Bad request.');
+  const db = admin.firestore(), uid = req.auth.uid, rec = await db.doc(`medical_records/${recordId}`).get();
+  if (!rec.exists || rec.data().status !== 'active') throw new HttpsError('not-found', 'Record not found.');
+  const r = rec.data();
+  let role = 'patient';
+  if (r.ownerUid !== uid) {
+    role = 'doctor';
+    if (req.auth.token.role !== 'doctor') throw new HttpsError('permission-denied', 'Not allowed.');
+    const c = await db.doc(`consents/${recordId}_${uid}`).get();
+    if (!c.exists || c.data().status !== 'active' || c.data().expiresAt.toMillis() < Date.now()) throw new HttpsError('permission-denied', 'No active consent.');
+  }
+  if (!r.file?.path?.startsWith(`records/${r.ownerUid}/`)) throw new HttpsError('failed-precondition', 'Bad file.');
+  const file = bucket().file(r.file.path), [[buf], [meta]] = await Promise.all([file.download(), file.getMetadata()]);
+  if (buf.length > 6 * 1024 * 1024) throw new HttpsError('failed-precondition', 'File too large.');
+  await logAccess(recordId, r.ownerUid, uid, role, 'viewed');
+  return { contentType: meta.contentType || 'application/octet-stream', data: buf.toString('base64') };
+});
+
+// =====================================================================
+// PHASE 14: HOSPITALS AND CLINICS
+// =====================================================================
+exports.reviewHospitalApplication = onCall(REGION, async (req) => {
+  requireAdmin(req);
+  const { uid, decision, reason } = req.data || {};
+  if (typeof uid !== 'string' || !['approve', 'reject'].includes(decision)) throw new HttpsError('invalid-argument', 'Bad request.');
+  if (decision === 'reject' && !(typeof reason === 'string' && reason.trim().length >= 5 && reason.length <= 300)) throw new HttpsError('invalid-argument', 'A reason of 5 to 300 characters is required.');
+  const db = admin.firestore(), appRef = db.doc(`hospital_applications/${uid}`), userRef = db.doc(`users/${uid}`);
+  await db.runTransaction(async (tx) => {
+    const [a, u] = await Promise.all([tx.get(appRef), tx.get(userRef)]);
+    if (!a.exists || a.data().status !== 'pending') throw new HttpsError('failed-precondition', 'Application is not pending.');
+    if (u.exists && u.data().role !== 'patient') throw new HttpsError('failed-precondition', 'This account already has another role.');
+    const d = a.data(), review = { reviewedBy: req.auth.uid, reviewedAt: FieldValue.serverTimestamp() };
+    if (decision === 'approve') {
+      tx.update(appRef, { status: 'approved', ...review });
+      tx.set(db.doc(`hospitals/${uid}`), { uid, name: d.name, type: d.type, address: d.address, pin: d.pin, phone: d.phone, departments: d.departments || [], city: 'Udaipur', verified: true, active: true, verifiedAt: FieldValue.serverTimestamp() });
+      tx.set(userRef, { role: 'hospital' }, { merge: true });
+    } else tx.update(appRef, { status: 'rejected', rejectReason: reason.trim(), ...review });
+    tx.set(db.collection('audit_logs').doc(), { action: decision === 'approve' ? 'hospital_approved' : 'hospital_rejected', targetUid: uid, by: req.auth.uid, at: FieldValue.serverTimestamp() });
+  });
+  if (decision === 'approve') await admin.auth().setCustomUserClaims(uid, { role: 'hospital' });
+  await notify(uid, decision === 'approve' ? 'verified' : 'rejected');
+  return { ok: true };
+});
+exports.getHospitalApplicationDocument = onCall(REGION, async (req) => {
+  requireAdmin(req);
+  const { uid, path } = req.data || {};
+  if (typeof uid !== 'string' || typeof path !== 'string' || !path.startsWith(`hospital_docs/${uid}/`)) throw new HttpsError('invalid-argument', 'Bad request.');
+  const a = await admin.firestore().doc(`hospital_applications/${uid}`).get();
+  if (!a.exists || !(a.data().documents || []).some(d => d.path === path)) throw new HttpsError('not-found', 'Document not found.');
+  const file = bucket().file(path), [[buf], [meta]] = await Promise.all([file.download(), file.getMetadata()]);
+  if (buf.length > 6 * 1024 * 1024) throw new HttpsError('failed-precondition', 'File too large.');
+  await admin.firestore().collection('audit_logs').add({ action: 'document_viewed', targetUid: uid, by: req.auth.uid, at: FieldValue.serverTimestamp() });
+  return { contentType: meta.contentType || 'application/octet-stream', data: buf.toString('base64') };
+});
+// A hospital invites a verified doctor by medical registration number. The doctor must accept.
+exports.inviteDoctor = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  if (req.auth.token.role !== 'hospital') throw new HttpsError('permission-denied', 'Hospitals only.');
+  const reg = clip(req.data?.regNumber, 40); if (reg.length < 3) throw new HttpsError('invalid-argument', 'Registration number needed.');
+  const db = admin.firestore(), hid = req.auth.uid;
+  const [h, q] = await Promise.all([db.doc(`hospitals/${hid}`).get(), db.collection('doctors').where('regNumber', '==', reg).limit(2).get()]);
+  if (!h.exists || h.data().verified !== true) throw new HttpsError('permission-denied', 'Hospital not verified.');
+  if (q.size !== 1) throw new HttpsError('not-found', 'No single verified doctor with that number.');
+  const d = q.docs[0], dd = d.data();
+  if (dd.verified !== true) throw new HttpsError('not-found', 'Doctor not verified.');
+  if (dd.hospitalId && dd.hospitalId !== hid) throw new HttpsError('failed-precondition', 'Doctor is linked to another hospital.');
+  const ref = db.doc(`hospital_links/${hid}_${d.id}`), ex = await ref.get();
+  if (ex.exists && ['active', 'invited'].includes(ex.data().status)) throw new HttpsError('already-exists', 'Already invited or linked.');
+  await ref.set({ hospitalUid: hid, hospitalName: h.data().name, doctorUid: d.id, doctorName: dd.name, status: 'invited', createdAt: FieldValue.serverTimestamp() });
+  await notify(d.id, 'hosp_invite');
+  return { ok: true };
+});
+exports.respondAffiliation = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  if (req.auth.token.role !== 'doctor') throw new HttpsError('permission-denied', 'Doctors only.');
+  const { id, accept } = req.data || {};
+  if (typeof id !== 'string' || typeof accept !== 'boolean') throw new HttpsError('invalid-argument', 'Bad request.');
+  const db = admin.firestore(), ref = db.doc(`hospital_links/${id}`), uid = req.auth.uid;
+  let hid;
+  await db.runTransaction(async (tx) => {
+    const l = await tx.get(ref);
+    if (!l.exists || l.data().doctorUid !== uid || l.data().status !== 'invited') throw new HttpsError('failed-precondition', 'No pending invitation.');
+    hid = l.data().hospitalUid;
+    tx.update(ref, { status: accept ? 'active' : 'declined', respondedAt: FieldValue.serverTimestamp() });
+    if (accept) tx.update(db.doc(`doctors/${uid}`), { hospitalId: hid, hospitalName: l.data().hospitalName });
+  });
+  await notify(hid, 'hosp_response');
+  return { ok: true };
+});
+exports.removeAffiliation = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  const id = req.data?.id; if (typeof id !== 'string') throw new HttpsError('invalid-argument', 'Bad request.');
+  const db = admin.firestore(), ref = db.doc(`hospital_links/${id}`), uid = req.auth.uid;
+  await db.runTransaction(async (tx) => {
+    const l = await tx.get(ref);
+    if (!l.exists || ![l.data().hospitalUid, l.data().doctorUid].includes(uid) || !['active', 'invited'].includes(l.data().status)) throw new HttpsError('permission-denied', 'Not allowed.');
+    tx.update(ref, { status: 'removed', removedBy: uid, removedAt: FieldValue.serverTimestamp() });
+    const dRef = db.doc(`doctors/${l.data().doctorUid}`), d = await tx.get(dRef);
+    if (d.exists && d.data().hospitalId === l.data().hospitalUid) tx.update(dRef, { hospitalId: FieldValue.delete(), hospitalName: FieldValue.delete() });
+  });
+  return { ok: true };
+});
+
+// =====================================================================
+// PHASE 15: SUPER ADMIN (stats, users, support tickets)
+// =====================================================================
+exports.adminStats = onCall(REGION, async (req) => {
+  requireAdmin(req);
+  const db = admin.firestore(), c = (name, f, v) => count(f ? db.collection(name).where(f, '==', v) : db.collection(name));
+  const [patients, doctors, labs, hospitals, apTotal, apPending, apConfirmed, apDone, apCancelled, dbTotal, dbReady, dbCancelled, pDoc, pLab, pHosp, tickets] = await Promise.all([
+    c('users', 'role', 'patient'), c('doctors'), c('labs'), c('hospitals'),
+    c('appointments'), c('appointments', 'status', 'pending'), c('appointments', 'status', 'confirmed'), c('appointments', 'status', 'completed'), c('appointments', 'status', 'cancelled'),
+    c('diagnostic_bookings'), c('diagnostic_bookings', 'status', 'report_ready'), c('diagnostic_bookings', 'status', 'cancelled'),
+    c('doctor_applications', 'status', 'pending'), c('lab_applications', 'status', 'pending'), c('hospital_applications', 'status', 'pending'), c('support_tickets', 'status', 'open')]);
+  return { patients, doctors, labs, hospitals, appointments: { total: apTotal, pending: apPending, confirmed: apConfirmed, completed: apDone, cancelled: apCancelled },
+    diagnostics: { total: dbTotal, reportReady: dbReady, cancelled: dbCancelled }, pending: { doctors: pDoc, labs: pLab, hospitals: pHosp }, openTickets: tickets };
+});
+exports.setUserStatus = onCall(REGION, async (req) => {
+  requireAdmin(req);
+  const { uid, status } = req.data || {};
+  if (typeof uid !== 'string' || !['active', 'suspended'].includes(status)) throw new HttpsError('invalid-argument', 'Bad request.');
+  if (uid === req.auth.uid) throw new HttpsError('failed-precondition', 'You cannot change your own account.');
+  const db = admin.firestore(), ref = db.doc(`users/${uid}`), u = await ref.get();
+  if (!u.exists) throw new HttpsError('not-found', 'User not found.');
+  if (u.data().role === 'admin') throw new HttpsError('failed-precondition', 'Cannot change an admin account.');
+  await admin.auth().updateUser(uid, { disabled: status === 'suspended' });
+  if (status === 'suspended') await admin.auth().revokeRefreshTokens(uid);
+  await ref.update({ status });
+  await db.collection('audit_logs').add({ action: status === 'suspended' ? 'user_suspended' : 'user_reactivated', targetUid: uid, by: req.auth.uid, at: FieldValue.serverTimestamp() });
+  return { ok: true };
+});
+// Support tickets: the owner opens one (client write, see rules). Replies and closing go through here so both sides are trusted.
+exports.replyTicket = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  const { id } = req.data || {}, text = clip(req.data?.text, 1000);
+  if (typeof id !== 'string' || text.length < 2) throw new HttpsError('invalid-argument', 'Bad request.');
+  const ref = admin.firestore().doc(`support_tickets/${id}`), t = await ref.get(), isAdmin = req.auth.token.role === 'admin';
+  if (!t.exists || (t.data().ownerUid !== req.auth.uid && !isAdmin)) throw new HttpsError('permission-denied', 'Not allowed.');
+  if (t.data().status === 'closed') throw new HttpsError('failed-precondition', 'Ticket is closed.');
+  await ref.update({ replies: FieldValue.arrayUnion({ by: req.auth.uid, role: isAdmin ? 'admin' : 'user', text, at: admin.firestore.Timestamp.now() }), status: isAdmin ? 'answered' : 'open', updatedAt: FieldValue.serverTimestamp() });
+  if (isAdmin) await notify(t.data().ownerUid, 'ticket_reply');
+  return { ok: true };
+});
+exports.closeTicket = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  const id = req.data?.id; if (typeof id !== 'string') throw new HttpsError('invalid-argument', 'Bad request.');
+  const ref = admin.firestore().doc(`support_tickets/${id}`), t = await ref.get();
+  if (!t.exists || (t.data().ownerUid !== req.auth.uid && req.auth.token.role !== 'admin')) throw new HttpsError('permission-denied', 'Not allowed.');
+  await ref.update({ status: 'closed', closedBy: req.auth.uid, updatedAt: FieldValue.serverTimestamp() });
+  return { ok: true };
 });

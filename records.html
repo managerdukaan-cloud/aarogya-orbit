@@ -1,0 +1,19 @@
+<!doctype html><html lang="en"><head><title>AAROGYA ORBIT – Health records</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#18251D"><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"><link rel="stylesheet" href="/css/app.css"></head><body>
+<header class="header"><div class="container"><a href="/dashboard.html"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><button class="btn btn-ghost" id="logout" data-i18n="dash.logout"></button></div></div></header>
+<nav class="subnav" aria-label="Account"><div class="container"><a href="/dashboard.html" data-i18n="nav.home"></a><a href="/doctors.html" data-i18n="nav.doctors"></a><a href="/tests.html" data-i18n="nav.tests"></a><a href="/hospitals.html" data-i18n="nav.hospitals"></a><a href="/appointments.html" data-i18n="nav.appts"></a><a href="/records.html" data-i18n="nav.records" aria-current="page"></a><a href="/support.html" data-i18n="nav.support"></a></div></nav>
+<main class="container page" id="app" hidden>
+<h1 data-i18n="rec.title"></h1><p class="sub" data-i18n="rec.sub"></p>
+<div id="msg" class="msg" role="status" aria-live="polite" hidden></div>
+<button class="btn btn-primary" id="add" type="button" data-i18n="rec.add"></button>
+<section class="panel" id="panel" hidden><form id="form" novalidate>
+<div class="field"><label for="title" data-i18n="rec.name"></label><input id="title" type="text" maxlength="100"></div>
+<div class="row2"><div class="field"><label for="category" data-i18n="cat.category"></label><select id="category"></select></div>
+<div class="field"><label for="recordDate" data-i18n="rec.date"></label><input id="recordDate" type="date"></div></div>
+<div class="field"><label for="member" data-i18n="rec.for"></label><select id="member"></select></div>
+<div class="field"><label for="file" data-i18n="rec.file"></label><input id="file" type="file" accept="application/pdf,image/jpeg,image/png"></div>
+<div class="btns"><button class="btn btn-primary" id="save" type="submit"><span id="spin" class="loader" hidden></span><span data-i18n="rec.upload"></span></button><button class="btn btn-ghost" id="cancel" type="button" data-i18n="fam.cancel"></button></div>
+</form></section>
+<div class="filters" style="grid-template-columns:repeat(auto-fit,minmax(160px,220px));margin-top:16px"><select id="fcat"></select><input id="fdate" type="date" aria-label="From date"></div>
+<p class="notice" id="empty" hidden data-i18n="rec.empty"></p>
+<div class="grid" id="list" style="grid-template-columns:1fr"></div>
+</main><script type="module" src="/js/records.js"></script></body></html>
