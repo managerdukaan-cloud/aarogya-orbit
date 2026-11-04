@@ -186,6 +186,37 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
+
+    // ---- Platform settings, payments, reviews, packages (Phase 17-19) ----
+    match /settings/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin() && request.resource.data.keys().hasOnly(['commissionPct','fixedFee','onlinePaymentEnabled','updatedAt'])
+        && request.resource.data.commissionPct is number && request.resource.data.commissionPct >= 0 && request.resource.data.commissionPct <= 50
+        && request.resource.data.fixedFee is number && request.resource.data.fixedFee >= 0 && request.resource.data.fixedFee <= 1000
+        && request.resource.data.onlinePaymentEnabled is bool;
+    }
+    match /payments/{id} {
+      allow read: if signedIn() && (resource.data.patientUid == request.auth.uid || resource.data.providerUid == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+    match /reviews/{id} {
+      allow read: if resource.data.status == 'published' || (signedIn() && (resource.data.patientUid == request.auth.uid || isAdmin()));
+      allow write: if false;
+    }
+    match /test_packages/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /lab_package_pricing/{id} {
+      allow read: if true;
+      allow create, update: if signedIn() && request.auth.token.role == 'lab'
+        && request.resource.data.labUid == request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.packageId
+        && request.resource.data.keys().hasOnly(['labUid','packageId','price','originalPrice','turnaroundHours','homeCollection','active','updatedAt'])
+        && request.resource.data.price is number && request.resource.data.price > 0 && request.resource.data.price <= 200000
+        && request.resource.data.originalPrice is number && request.resource.data.originalPrice >= 0 && request.resource.data.originalPrice <= 200000
+        && request.resource.data.turnaroundHours is int && request.resource.data.turnaroundHours >= 1 && request.resource.data.turnaroundHours <= 720
+        && request.resource.data.homeCollection is bool;
+      allow delete: if signedIn() && request.auth.token.role == 'lab' && resource.data.labUid == request.auth.uid;
+    }
+
     match /specialities/{id}     { allow read: if true; allow write: if isAdmin(); }
     match /service_areas/{id}    { allow read: if true; allow write: if isAdmin(); }
     match /diagnostic_tests/{id} { allow read: if true; allow write: if isAdmin(); }

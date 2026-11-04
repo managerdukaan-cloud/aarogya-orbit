@@ -26,14 +26,15 @@ function paint() {
   row('cat.sample', test.sampleType); row('cat.fasting', test.fasting); row('cat.prep', test.preparation);
   info.append(el('p', 'mini', t('cmp.prepNote')));
   const by = $('sort').value;
-  rows.sort((a, b) => by === 'price' ? a.price - b.price : a.turnaroundHours - b.turnaroundHours);
+  const avg = (r) => (r.lab.ratingCount ? r.lab.ratingSum / r.lab.ratingCount : 0);
+  rows.sort((a, b) => by === 'price' ? a.price - b.price : by === 'rating' ? avg(b) - avg(a) : a.turnaroundHours - b.turnaroundHours);
   $('empty').hidden = rows.length > 0; const box = $('list'); box.replaceChildren();
   for (const p of rows) {
     const c = el('article', 'card dr'), h = el('h3', '', p.lab.name); h.append(el('span', 'badge', t('dr.verified'))); c.append(h);
     const pe = el('p', 'price', `₹${p.price}`); if (p.originalPrice > p.price) { pe.append(el('s', '', `₹${p.originalPrice}`)); }
     c.append(pe);
     if (p.originalPrice > p.price) c.append(el('p', 'off', t('cmp.off').replace('{n}', Math.round((1 - p.price / p.originalPrice) * 100))));
-    c.append(el('p', 'meta', t('cmp.tat').replace('{n}', p.turnaroundHours)), el('p', 'meta', `${p.lab.address} - ${p.lab.pin}`));
+    c.append(el('p', 'meta', t('cmp.tat').replace('{n}', p.turnaroundHours)), el('p', 'meta', `${p.lab.address} - ${p.lab.pin}`), el('p', 'meta', p.lab.ratingCount ? t('rv.avg').replace('{a}', (p.lab.ratingSum / p.lab.ratingCount).toFixed(1)).replace('{n}', p.lab.ratingCount) : t('rv.none')));
     if (p.lab.accreditationVerified && p.lab.accreditation) c.append(el('p', 'meta', t('cmp.accred').replace('{a}', p.lab.accreditation)));
     if (p.homeCollection && p.lab.homeCollection) c.append(el('span', 'tag', t('cmp.home')));
     const a = el('a', 'btn btn-primary', t(loggedIn ? 'cmp.book' : 'bk.loginToBook')); a.href = loggedIn ? `/book-test.html?l=${encodeURIComponent(p.labUid)}&t=${encodeURIComponent(tid)}` : '/auth.html'; c.append(a);

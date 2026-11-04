@@ -5,12 +5,12 @@ import { $, el, ist, toMins, dayKey, addDays, slotsFor, chip, nameOf } from './u
 import { doc, getDoc, getDocs, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
-const q = new URLSearchParams(location.search), labId = q.get('l'), testId = q.get('t');
+const q = new URLSearchParams(location.search), labId = q.get('l'), pkgId = q.get('p'), isPkg = !!pkgId, testId = isPkg ? pkgId : q.get('t');
 if (!labId || !testId) location.replace('/tests.html');
 let lab, sch, test, price, members = [], type = '', date = '', time = '', counts = {};
 const user = await requireUser(() => { head(); renderTypes(); renderMembers(); renderDates(); renderTimes(); });
 const role = (await user.getIdTokenResult(true)).claims.role;
-const [l, s, tt, p] = await Promise.all([getDoc(doc(db, 'labs', labId)), getDoc(doc(db, 'lab_settings', labId)), getDoc(doc(db, 'diagnostic_tests', testId)), getDoc(doc(db, 'lab_pricing', `${labId}_${testId}`))]);
+const [l, s, tt, p] = await Promise.all([getDoc(doc(db, 'labs', labId)), getDoc(doc(db, 'lab_settings', labId)), getDoc(doc(db, isPkg ? 'test_packages' : 'diagnostic_tests', testId)), getDoc(doc(db, isPkg ? 'lab_package_pricing' : 'lab_pricing', `${labId}_${testId}`))]);
 if (!l.exists() || !tt.exists() || !p.exists() || l.data().verified !== true) location.replace('/tests.html');
 lab = l.data(); sch = s.data(); test = tt.data(); price = p.data();
 function head() {
@@ -67,7 +67,7 @@ $('confirm').addEventListener('click', async () => {
   if (type === 'home' && (address.line.length < 5 || !/^\d{6}$/.test(address.pin))) return say('msg', 'dbk.badAddr', false, t);
   $('confirm').disabled = true; $('spin').hidden = false;
   try {
-    await httpsCallable(functions, 'bookDiagnostic')({ labUid: labId, testIds: [testId], memberId: $('member').value, type, date, time, phone, address });
+    await httpsCallable(functions, 'bookDiagnostic')({ labUid: labId, ...(isPkg ? { packageId: pkgId } : { testIds: [testId] }), memberId: $('member').value, type, date, time, phone, address });
     $('summary').textContent = `${nameOf(test, getLang())} · ${lab.name} · ${date} · ${time}`; $('formWrap').hidden = true; $('done').hidden = false;
   } catch (e) {
     const k = { 'functions/already-exists': 'bk.slotTaken', 'functions/failed-precondition': 'bk.past', 'functions/out-of-range': 'dbk.noArea', 'functions/permission-denied': 'bk.patientOnly' }[e.code] || 'err.generic';

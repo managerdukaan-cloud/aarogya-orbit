@@ -2,11 +2,13 @@ import { db, functions } from './firebase-init.js';
 import { t } from './i18n.js';
 import { requireUser, say } from './guard.js';
 import { collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+import { payEnabled, payOnline } from './pay.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 const $ = (id) => document.getElementById(id);
-let items = [];
+let items = [], canPay = false;
 const user = await requireUser(render);
+canPay = await payEnabled();
 async function load() {
   const s = await getDocs(query(collection(db, 'appointments'), where('patientUid', '==', user.uid)));
   items = s.docs.map(x => ({ id: x.id, ...x.data() }));
@@ -26,6 +28,14 @@ function render() {
       line('meta', a.clinicName || ''), line('meta', t('bk.fee').replace('{n}', a.fee)));
     if (a.status === 'cancelled' && a.cancelledBy === a.doctorUid) c.append(line('meta', t('ap.byDoctor')));
     if (a.prescriptionId) { const l = document.createElement('a'); l.className = 'btn btn-ghost'; l.href = '/prescriptions.html'; l.textContent = t('rx.view'); c.append(l); }
+    if (a.paymentStatus === 'paid') { c.append(line('meta', t('pay.paid'))); const rc = document.createElement('a'); rc.className = 'btn btn-ghost'; rc.href = `/receipt.html?p=${encodeURIComponent(a.paymentId)}`; rc.textContent = t('pay.receipt'); c.append(rc); }
+    else if (canPay && a.status !== 'cancelled') {
+      const pb = document.createElement('button'); pb.className = 'btn btn-primary'; pb.textContent = t('pay.payNow').replace('{n}', a.fee);
+      pb.onclick = async () => { pb.disabled = true; try { await payOnline('appointment', a.id, `Consultation with ${a.doctorName}`); say('msg', 'pay.done', true, t); } catch (e) { say('msg', e.message === 'dismissed' ? 'pay.cancelled' : 'pay.failed', false, t); } await load(); };
+      c.append(pb);
+    }
+    if (a.status === 'completed' && !a.reviewId) { const rv = document.createElement('a'); rv.className = 'btn btn-ghost'; rv.href = `/review.html?k=doctor&id=${encodeURIComponent(a.id)}`; rv.textContent = t('rv.rate'); c.append(rv); }
+    if (live(a) && (a.rescheduleCount || 0) < 2) { const rs = document.createElement('a'); rs.className = 'btn btn-ghost'; rs.href = `/reschedule.html?r=${encodeURIComponent(a.id)}`; rs.textContent = t('rs.button'); c.append(rs); }
     if (live(a)) {
       const b = document.createElement('button'); b.className = 'btn btn-ghost danger'; b.textContent = t('ap.cancel');
       b.onclick = async () => {

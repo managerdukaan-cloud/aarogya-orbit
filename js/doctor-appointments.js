@@ -25,7 +25,7 @@ const line = (cls, text) => { const p = document.createElement('p'); p.className
 function actions(a) {
   const n = ist(), today = a.date === n.date, started = a.date < n.date || (today && toMins(a.time) <= n.mins);
   switch (a.status) {
-    case 'pending': return [['confirmed', 'act.confirm', 'btn-primary'], ['cancelled', 'act.reject', 'btn-ghost danger']];
+    case 'pending': case 'rescheduled': return [['confirmed', 'act.confirm', 'btn-primary'], ['cancelled', 'act.reject', 'btn-ghost danger']];
     case 'confirmed': return [...(today ? [['checked_in', 'act.checkin', 'btn-primary']] : []), ...(started ? [['no_show', 'act.noshow', 'btn-ghost']] : []), ['cancelled', 'act.cancel', 'btn-ghost danger']];
     case 'checked_in': return [['in_consultation', 'act.start', 'btn-primary'], ['cancelled', 'act.cancel', 'btn-ghost danger']];
     case 'in_consultation': return [['completed', 'act.complete', 'btn-primary']];
@@ -42,7 +42,7 @@ function render() {
     const c = document.createElement('article'); c.className = 'card dr';
     const h = document.createElement('h3'); h.append(document.createTextNode(`${a.date} · ${a.time}`));
     const st = document.createElement('span'); st.className = 'status ' + a.status; st.textContent = t('st.' + a.status); h.append(st);
-    c.append(h, line('', t('dap.patient').replace('{name}', a.memberName)), line('meta', t('dap.collect').replace('{n}', a.fee)));
+    c.append(h, line('', t('dap.patient').replace('{name}', a.memberName)), line('meta', a.paymentStatus === 'paid' ? t('pay.paidOnline') : t('dap.collect').replace('{n}', a.fee)));
     const act = document.createElement('div'); act.className = 'actions';
     for (const [status, key, cls] of actions(a)) {
       const b = document.createElement('button'); b.className = 'btn ' + cls; b.textContent = t(key);

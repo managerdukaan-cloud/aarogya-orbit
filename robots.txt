@@ -15,6 +15,9 @@ Disallow: /appointments.html
 Disallow: /my-tests.html
 Disallow: /prescription
 Disallow: /book
+Disallow: /receipt
+Disallow: /review
+Disallow: /reschedule
 Disallow: /profile.html
 Disallow: /family.html
 Disallow: /support.html

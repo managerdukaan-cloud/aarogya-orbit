@@ -24,10 +24,14 @@ patient · doctor · lab · hospital · admin
 | Admin dashboard (real numbers), users (suspend), support tickets, audit log | Built, **not yet tested** |
 | In-app notifications (Hindi/English) | Built, **not yet tested** |
 | Homepage, privacy and terms pages | Built. Legal text is a DRAFT |
-| Online payments (Razorpay), refunds, commission, subscriptions | **Not built** – needs gateway credentials |
+| Online payments (Razorpay), receipts, refunds, commission setting | Built, **switched off until keys are added** (see PAYMENTS_SETUP.md). Not tested with real keys |
+| Reviews and ratings (genuine, one per finished visit, admin can hide) | Built, **not yet tested** |
+| Appointment reschedule (max 2, doctor re-confirms) | Built, **not yet tested** |
+| Health packages (admin-defined, lab prices, exact tests shown, bookable) | Built, **not yet tested** |
+| Subscriptions and coupons | **Not built** |
 | Email, SMS, WhatsApp, push notifications | **Not built** – needs provider accounts and consent flow |
 | AI health assistant | **Not built** – needs consent design and a data-processing agreement first |
-| Reviews and ratings, test packages, lab/hospital staff accounts, reschedule, ABDM | **Not built** |
+| Lab/hospital staff accounts, ABDM | **Not built** |
 | Service worker / offline | **Not built** on purpose (avoids stale private pages) |
 
 ## Known limitations
@@ -44,7 +48,7 @@ patient · doctor · lab · hospital · admin
 4. Have the privacy policy and terms reviewed by a qualified lawyer; fill the `[ ]` placeholders. Review DPDP Act, NMC telemedicine rules, clinical establishment and lab regulations, and any NABL claims.
 5. Run a security review of `firestore.rules` and `storage.rules` with the Firebase emulator; test with a non-admin account that every forbidden action fails.
 6. Set a Cloud Billing budget alert, enable Firestore backups/PITR, and decide data retention periods.
-7. Decide the payment gateway, add its secret key as a Functions secret (never in code), build server-side verification and webhooks, then enable online payment.
+7. Follow PAYMENTS_SETUP.md: test mode first, then live keys after KYC. Re-test payment and refund with real small amounts.
 8. Test on real Android phones in Hindi and English (320px to 1920px).
 9. Replace placeholders for contact details; connect a custom domain and update `sitemap.xml` and `robots.txt`.
 10. Do not say "ABDM", "NABL" or "verified" anywhere unless it is actually true for that provider.

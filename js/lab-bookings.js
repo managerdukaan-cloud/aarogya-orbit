@@ -17,7 +17,7 @@ async function load() {
   const s = await getDocs(query(collection(db, 'diagnostic_bookings'), where('labUid', '==', user.uid)));
   items = s.docs.map(x => ({ id: x.id, ...x.data() })); render();
 }
-const testNames = (b) => b.tests.map(x => (getLang() === 'hi' && x.name_hi) || x.name_en).join(', ');
+const testNames = (b) => (b.packageName_en ? ((getLang() === 'hi' && b.packageName_hi) || b.packageName_en) + ': ' : '') + b.tests.map(x => (getLang() === 'hi' && x.name_hi) || x.name_en).join(', ');
 function render() {
   const all = $('filter').value === 'all';
   const list = items.filter(b => all || (OPEN.includes(b.status) && b.status !== 'report_ready'))
@@ -26,7 +26,7 @@ function render() {
   for (const b of list) {
     const c = el('article', 'card dr'), h = el('h3', '', `${b.date} · ${b.time}`);
     h.append(el('span', 'status ' + b.status, t('dst.' + b.status)), el('span', 'tag', t(b.type === 'home' ? 'lab.typeHome' : 'lab.typeLab'))); c.append(h);
-    c.append(el('p', '', `${t('rx.patient')}: ${b.memberName} · ${b.contactPhone}`), el('p', '', testNames(b)), el('p', 'meta', `₹${b.total} · ${t(b.paymentMode === 'pay_at_collection' ? 'lab.payCollect' : 'lab.payLab')}`));
+    c.append(el('p', '', `${t('rx.patient')}: ${b.memberName} · ${b.contactPhone}`), el('p', '', testNames(b)), el('p', 'meta', `₹${b.total} · ${b.paymentStatus === 'paid' ? t('pay.paidOnline') : t(b.paymentMode === 'pay_at_collection' ? 'lab.payCollect' : 'lab.payLab')}`));
     if (b.address) c.append(el('p', 'meta', `${b.address.line} - ${b.address.pin}`));
     const act = el('div', 'actions'), next = (b.type === 'home' ? NEXT_HOME : NEXT_LAB)[b.status] || [];
     for (const s of next) {

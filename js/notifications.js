@@ -13,7 +13,7 @@ function target(type) {
   return ({ appt_requested: '/appointments.html', appt_new: '/doctor-appointments.html', appt_confirmed: '/appointments.html', appt_completed: '/appointments.html',
     appt_cancelled: doctor ? '/doctor-appointments.html' : '/appointments.html', rx_issued: '/prescriptions.html', lab_booked: '/my-tests.html', lab_new: '/lab-bookings.html',
     lab_status: '/my-tests.html', lab_cancelled: lab ? '/lab-bookings.html' : '/my-tests.html', report_ready: '/my-tests.html', record_shared: '/shared-records.html',
-    hosp_invite: '/doctor-affiliations.html', hosp_response: '/hospital-portal.html', ticket_reply: '/support.html', verified: '/dashboard.html', rejected: '/dashboard.html' })[type] || '/dashboard.html';
+    hosp_invite: '/doctor-affiliations.html', hosp_response: '/hospital-portal.html', ticket_reply: '/support.html', verified: '/dashboard.html', rejected: '/dashboard.html', appt_rescheduled: '/doctor-appointments.html', payment_paid: '/dashboard.html', payment_refunded: '/dashboard.html' })[type] || '/dashboard.html';
 }
 async function load() { items = (await getDocs(query(collection(db, 'notifications'), where('uid', '==', user.uid), limit(100)))).docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)); render(); }
 function render() {

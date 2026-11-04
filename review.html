@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><head><title>AAROGYA ORBIT – Review</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#18251D"><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"><link rel="stylesheet" href="/css/app.css"></head><body>
+<header class="header"><div class="container"><a href="/dashboard.html"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><button class="btn btn-ghost" id="logout" data-i18n="dash.logout"></button></div></div></header>
+<nav class="subnav" aria-label="Account"><div class="container"><a href="/dashboard.html" data-i18n="nav.home"></a></div></nav>
+<main class="container page" id="app" hidden>
+<h1 id="title" data-i18n="rv.title"></h1><p class="sub" data-i18n="rv.sub"></p>
+<section class="panel" id="formWrap"><div id="msg" class="msg" role="alert" aria-live="polite" hidden></div>
+<p class="step" data-i18n="rv.stars"></p><div class="chips" id="stars"></div>
+<div class="field" style="margin-top:14px"><label for="comment" data-i18n="rv.comment"></label><textarea id="comment" maxlength="500"></textarea><div class="hint" data-i18n="rv.commentNote"></div></div>
+<button class="btn btn-primary" id="send" type="button" disabled data-i18n="rv.send"></button></section>
+<section class="panel" id="done" hidden><div class="msg ok" data-i18n="rv.done"></div></section>
+</main><script type="module" src="/js/review.js"></script></body></html>

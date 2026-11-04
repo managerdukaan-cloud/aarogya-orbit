@@ -1,5 +1,6 @@
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const { defineString } = require('firebase-functions/params');
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
+const crypto = require('crypto');
+const { defineString, defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 admin.initializeApp();
 const FieldValue = admin.firestore.FieldValue;
@@ -160,6 +161,7 @@ exports.cancelAppointment = onCall(REGION, async (req) => {
 // Doctor moves an appointment through its stages. Only these transitions are allowed.
 const NEXT = {
   pending: ['confirmed', 'cancelled'],
+  rescheduled: ['confirmed', 'cancelled'],
   confirmed: ['checked_in', 'cancelled', 'no_show'],
   checked_in: ['in_consultation', 'cancelled'],
   in_consultation: ['completed']
@@ -274,7 +276,8 @@ exports.getLabApplicationDocument = onCall(REGION, async (req) => {
 exports.bookDiagnostic = onCall(REGION, async (req) => {
   if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
   if (req.auth.token.role !== 'patient') throw new HttpsError('permission-denied', 'Only patients can book.');
-  const { labUid, testIds, memberId, type, date, time, phone, address } = req.data || {};
+  const { labUid, testIds: rawIds, packageId, memberId, type, date, time, phone, address } = req.data || {};
+  const testIds = packageId ? ['__package__'] : rawIds;
   if (typeof labUid !== 'string' || !Array.isArray(testIds) || testIds.length < 1 || testIds.length > 10 || new Set(testIds).size !== testIds.length
     || testIds.some(x => typeof x !== 'string') || typeof memberId !== 'string' || !['home', 'lab'].includes(type)
     || !/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !/^\d{2}:\d{2}$/.test(time || '') || !/^[6-9]\d{9}$/.test(phone || ''))
@@ -291,8 +294,14 @@ exports.bookDiagnostic = onCall(REGION, async (req) => {
   if (!setS.exists || !validSlots(setS.data(), date).includes(time)) throw new HttpsError('invalid-argument', 'Not a valid slot.');
   const settings = setS.data();
 
-  const tests = []; let total = 0;
-  for (const id of testIds) {
+  const tests = []; let total = 0, pkgMeta = {};
+  if (typeof packageId === 'string' && packageId) {
+    const [pk, pp] = await Promise.all([db.doc(`test_packages/${packageId}`).get(), db.doc(`lab_package_pricing/${labUid}_${packageId}`).get()]);
+    if (!pk.exists || pk.data().active === false || !pp.exists || pp.data().active === false) throw new HttpsError('not-found', 'Package not offered by this lab.');
+    if (type === 'home' && pp.data().homeCollection !== true) throw new HttpsError('failed-precondition', 'Home collection not available for this package.');
+    for (const id of pk.data().testIds || []) { const t = await db.doc(`diagnostic_tests/${id}`).get(); if (t.exists) tests.push({ testId: id, name_en: t.data().name_en, name_hi: t.data().name_hi || '', price: 0 }); }
+    total = pp.data().price; pkgMeta = { packageId, packageName_en: pk.data().name_en, packageName_hi: pk.data().name_hi || '' };
+  } else for (const id of testIds) {
     const [t, p] = await Promise.all([db.doc(`diagnostic_tests/${id}`).get(), db.doc(`lab_pricing/${labUid}_${id}`).get()]);
     if (!t.exists || t.data().active === false || !p.exists || p.data().active === false) throw new HttpsError('not-found', 'Test not offered by this lab.');
     if (type === 'home' && p.data().homeCollection !== true) throw new HttpsError('failed-precondition', 'Home collection not available for this test.');
@@ -320,7 +329,7 @@ exports.bookDiagnostic = onCall(REGION, async (req) => {
     if (c >= (settings.capacity || 1)) throw new HttpsError('already-exists', 'Slot full.'); // capacity guard
     tx.set(countRef, { labUid, date, time, count: c + 1 });
     tx.set(bookRef, {
-      patientUid: req.auth.uid, memberId, memberType, memberName, contactPhone: phone, labUid, labName: lab.name, tests, total,
+      patientUid: req.auth.uid, memberId, memberType, memberName, contactPhone: phone, labUid, labName: lab.name, tests, total, ...pkgMeta,
       type, address: addr, date, time, slotId, status: 'confirmed', paymentMode: type === 'home' ? 'pay_at_collection' : 'pay_at_lab',
       createdAt: FieldValue.serverTimestamp()
     });
@@ -616,5 +625,190 @@ exports.closeTicket = onCall(REGION, async (req) => {
   const ref = admin.firestore().doc(`support_tickets/${id}`), t = await ref.get();
   if (!t.exists || (t.data().ownerUid !== req.auth.uid && req.auth.token.role !== 'admin')) throw new HttpsError('permission-denied', 'Not allowed.');
   await ref.update({ status: 'closed', closedBy: req.auth.uid, updatedAt: FieldValue.serverTimestamp() });
+  return { ok: true };
+});
+
+// =====================================================================
+// PHASE 17: PAYMENTS (Razorpay). Integration-ready: nothing is charged until real keys are set AND the admin turns it on.
+// The amount always comes from our own database, never from the browser. A booking is marked paid ONLY after the
+// provider's signature has been verified on the server (checkout confirmation) or by a verified webhook.
+// =====================================================================
+const RZP_KEY = defineString('RAZORPAY_KEY_ID', { default: '' });
+const RZP_SECRET = defineSecret('RAZORPAY_KEY_SECRET');
+const RZP_WEBHOOK = defineSecret('RAZORPAY_WEBHOOK_SECRET');
+const unset = (v) => !v || v === 'not-configured';
+const rzpReady = () => !unset(RZP_KEY.value()) && !unset(RZP_SECRET.value());
+async function platformSettings() {
+  const d = (await admin.firestore().doc('settings/platform').get()).data() || {};
+  return { commissionPct: Number(d.commissionPct) || 0, fixedFee: Number(d.fixedFee) || 0, onlinePaymentEnabled: d.onlinePaymentEnabled === true };
+}
+async function rzp(path, body) {
+  const auth = Buffer.from(`${RZP_KEY.value()}:${RZP_SECRET.value()}`).toString('base64');
+  const r = await fetch('https://api.razorpay.com/v1' + path, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Basic ' + auth }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { console.error('payment provider error', path, r.status, j?.error?.description); throw new HttpsError('internal', 'Payment provider error.'); }
+  return j;
+}
+const same = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(String(b)); return x.length === y.length && crypto.timingSafeEqual(x, y); };
+
+exports.paymentConfig = onCall({ ...REGION, secrets: [RZP_SECRET] }, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  const s = await platformSettings();
+  return { configured: rzpReady(), enabled: rzpReady() && s.onlinePaymentEnabled };
+});
+
+exports.createPaymentOrder = onCall({ ...REGION, secrets: [RZP_SECRET] }, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  if (req.auth.token.role !== 'patient') throw new HttpsError('permission-denied', 'Patients only.');
+  const { kind, id } = req.data || {};
+  if (!['appointment', 'diagnostic'].includes(kind) || typeof id !== 'string') throw new HttpsError('invalid-argument', 'Bad request.');
+  const s = await platformSettings();
+  if (!rzpReady() || !s.onlinePaymentEnabled) throw new HttpsError('failed-precondition', 'Online payment is not available.');
+  const db = admin.firestore(), snap = await db.doc(`${kind === 'appointment' ? 'appointments' : 'diagnostic_bookings'}/${id}`).get();
+  if (!snap.exists || snap.data().patientUid !== req.auth.uid) throw new HttpsError('not-found', 'Booking not found.');
+  const b = snap.data();
+  if (b.paymentStatus === 'paid') throw new HttpsError('already-exists', 'Already paid.');
+  if (!['pending', 'confirmed', 'rescheduled', 'collection_assigned', 'en_route', 'arrived', 'sample_collected', 'received_at_lab', 'processing', 'checked_in', 'in_consultation', 'completed', 'report_ready'].includes(b.status)) throw new HttpsError('failed-precondition', 'Booking is not payable.');
+  const amount = kind === 'appointment' ? b.fee : b.total, paise = Math.round(Number(amount) * 100);
+  if (!(paise >= 100)) throw new HttpsError('failed-precondition', 'Nothing to pay.');
+  const order = await rzp('/orders', { amount: paise, currency: 'INR', receipt: id.slice(0, 40), notes: { kind, refId: id } });
+  const names = kind === 'appointment' ? `Consultation with ${b.doctorName}` : (b.packageName_en || b.tests.map(t => t.name_en).join(', ')).slice(0, 200);
+  await db.doc(`payments/${order.id}`).set({
+    kind, refId: id, patientUid: req.auth.uid, patientName: b.memberName, providerUid: kind === 'appointment' ? b.doctorUid : b.labUid, providerName: kind === 'appointment' ? b.doctorName : b.labName,
+    description: names, amount: Number(amount), amountPaise: paise, currency: 'INR', orderId: order.id, status: 'created', createdAt: FieldValue.serverTimestamp()
+  });
+  return { orderId: order.id, amountPaise: paise, keyId: RZP_KEY.value() };
+});
+
+// Marks a payment paid inside a transaction. Called only after a verified signature (checkout or webhook).
+async function markPaid(orderId, paymentId, expectPaise) {
+  const db = admin.firestore(), pRef = db.doc(`payments/${orderId}`), set = await platformSettings();
+  let out = null;
+  await db.runTransaction(async (tx) => {
+    const p = await tx.get(pRef);
+    if (!p.exists) throw new HttpsError('not-found', 'Payment not found.');
+    const x = p.data();
+    if (x.status === 'paid' || x.status === 'refunded') return;
+    if (expectPaise != null && Number(expectPaise) !== x.amountPaise) throw new HttpsError('failed-precondition', 'Amount mismatch.');
+    const bRef = db.doc(`${x.kind === 'appointment' ? 'appointments' : 'diagnostic_bookings'}/${x.refId}`), b = await tx.get(bRef);
+    const commission = Math.min(x.amount, Math.round((x.amount * set.commissionPct / 100 + set.fixedFee) * 100) / 100);
+    tx.update(pRef, { status: 'paid', razorpayPaymentId: paymentId, paidAt: FieldValue.serverTimestamp(), commission, providerShare: Math.round((x.amount - commission) * 100) / 100 });
+    if (b.exists) tx.update(bRef, { paymentStatus: 'paid', paymentMode: 'online', paymentId: orderId });
+    out = x;
+  });
+  if (out) await notify(out.patientUid, 'payment_paid');
+  return out;
+}
+exports.verifyPayment = onCall({ ...REGION, secrets: [RZP_SECRET] }, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  const { orderId, paymentId, signature } = req.data || {};
+  if (![orderId, paymentId, signature].every(v => typeof v === 'string' && v.length > 5 && v.length < 200)) throw new HttpsError('invalid-argument', 'Bad request.');
+  if (!rzpReady()) throw new HttpsError('failed-precondition', 'Online payment is not available.');
+  const p = await admin.firestore().doc(`payments/${orderId}`).get();
+  if (!p.exists || p.data().patientUid !== req.auth.uid) throw new HttpsError('not-found', 'Payment not found.');
+  const expected = crypto.createHmac('sha256', RZP_SECRET.value()).update(`${orderId}|${paymentId}`).digest('hex');
+  if (!same(expected, signature)) throw new HttpsError('invalid-argument', 'Signature check failed.'); // never trust the success screen alone
+  await markPaid(orderId, paymentId, null);
+  return { ok: true };
+});
+// Webhook: the provider calls this directly. Signature is checked against the raw body.
+exports.razorpayWebhook = onRequest({ ...REGION, secrets: [RZP_WEBHOOK, RZP_SECRET] }, async (req, res) => {
+  try {
+    if (unset(RZP_WEBHOOK.value())) return res.status(503).send('not configured');
+    const sig = req.get('x-razorpay-signature') || '';
+    const expected = crypto.createHmac('sha256', RZP_WEBHOOK.value()).update(req.rawBody).digest('hex');
+    if (!same(expected, sig)) return res.status(400).send('bad signature');
+    const ev = req.body?.event, pay = req.body?.payload?.payment?.entity, db = admin.firestore();
+    if ((ev === 'payment.captured' || ev === 'order.paid') && pay?.order_id) await markPaid(pay.order_id, pay.id, pay.amount);
+    if (ev === 'refund.processed') {
+      const rf = req.body?.payload?.refund?.entity, q = await db.collection('payments').where('razorpayPaymentId', '==', rf?.payment_id).limit(1).get();
+      if (!q.empty && q.docs[0].data().status !== 'refunded') await q.docs[0].ref.update({ status: 'refunded', refundId: rf.id, refundedAt: FieldValue.serverTimestamp() });
+    }
+    return res.status(200).send('ok');
+  } catch (e) { console.error('webhook error', e.message); return res.status(500).send('error'); }
+});
+exports.adminRefund = onCall({ ...REGION, secrets: [RZP_SECRET] }, async (req) => {
+  requireAdmin(req);
+  const { orderId } = req.data || {}, reason = clip(req.data?.reason, 200);
+  if (typeof orderId !== 'string' || reason.length < 5) throw new HttpsError('invalid-argument', 'A reason of at least 5 characters is required.');
+  if (!rzpReady()) throw new HttpsError('failed-precondition', 'Payment provider is not configured.');
+  const db = admin.firestore(), ref = db.doc(`payments/${orderId}`), p = await ref.get();
+  if (!p.exists || p.data().status !== 'paid') throw new HttpsError('failed-precondition', 'Only a paid payment can be refunded.');
+  const x = p.data(), r = await rzp(`/payments/${x.razorpayPaymentId}/refund`, { amount: x.amountPaise, notes: { reason } });
+  await ref.update({ status: 'refunded', refundId: r.id, refundReason: reason, refundedAt: FieldValue.serverTimestamp(), refundedBy: req.auth.uid });
+  await db.doc(`${x.kind === 'appointment' ? 'appointments' : 'diagnostic_bookings'}/${x.refId}`).update({ paymentStatus: 'refunded' }).catch(() => {});
+  await db.collection('audit_logs').add({ action: 'payment_refunded', targetUid: x.patientUid, orderId, by: req.auth.uid, at: FieldValue.serverTimestamp() });
+  await notify(x.patientUid, 'payment_refunded');
+  return { ok: true };
+});
+
+// =====================================================================
+// PHASE 18: REVIEWS. Only for a finished visit, once per visit, only by the patient who had it. Admin can hide a review.
+// =====================================================================
+exports.submitReview = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  if (req.auth.token.role !== 'patient') throw new HttpsError('permission-denied', 'Patients only.');
+  const { kind, refId } = req.data || {}, rating = req.data?.rating, comment = clip(req.data?.comment, 500);
+  if (!['doctor', 'lab'].includes(kind) || typeof refId !== 'string' || !Number.isInteger(rating) || rating < 1 || rating > 5) throw new HttpsError('invalid-argument', 'Bad request.');
+  const db = admin.firestore(), uid = req.auth.uid, bRef = db.doc(`${kind === 'doctor' ? 'appointments' : 'diagnostic_bookings'}/${refId}`), rRef = db.doc(`reviews/${kind}_${refId}`);
+  await db.runTransaction(async (tx) => {
+    const [b, r] = await Promise.all([tx.get(bRef), tx.get(rRef)]);
+    if (!b.exists || b.data().patientUid !== uid) throw new HttpsError('permission-denied', 'Not your visit.');
+    if (b.data().status !== (kind === 'doctor' ? 'completed' : 'report_ready')) throw new HttpsError('failed-precondition', 'Visit is not finished yet.');
+    if (r.exists) throw new HttpsError('already-exists', 'Already reviewed.');
+    const target = kind === 'doctor' ? b.data().doctorUid : b.data().labUid, tRef = db.doc(`${kind === 'doctor' ? 'doctors' : 'labs'}/${target}`);
+    tx.set(rRef, { kind, refId, targetUid: target, patientUid: uid, rating, comment, status: 'published', createdAt: FieldValue.serverTimestamp() });
+    tx.update(tRef, { ratingSum: FieldValue.increment(rating), ratingCount: FieldValue.increment(1) });
+    tx.update(bRef, { reviewId: rRef.id });
+  });
+  return { ok: true };
+});
+exports.moderateReview = onCall(REGION, async (req) => {
+  requireAdmin(req);
+  const { id, action } = req.data || {};
+  if (typeof id !== 'string' || !['hide', 'show'].includes(action)) throw new HttpsError('invalid-argument', 'Bad request.');
+  const db = admin.firestore(), ref = db.doc(`reviews/${id}`);
+  await db.runTransaction(async (tx) => {
+    const r = await tx.get(ref); if (!r.exists) throw new HttpsError('not-found', 'Not found.');
+    const x = r.data(), want = action === 'hide' ? 'hidden' : 'published';
+    if (x.status === want) return;
+    const sign = action === 'hide' ? -1 : 1;
+    tx.update(ref, { status: want, moderatedBy: req.auth.uid, moderatedAt: FieldValue.serverTimestamp() });
+    tx.update(db.doc(`${x.kind === 'doctor' ? 'doctors' : 'labs'}/${x.targetUid}`), { ratingSum: FieldValue.increment(sign * x.rating), ratingCount: FieldValue.increment(sign) });
+    tx.set(db.collection('audit_logs').doc(), { action: action === 'hide' ? 'review_hidden' : 'review_restored', targetUid: x.targetUid, by: req.auth.uid, at: FieldValue.serverTimestamp() });
+  });
+  return { ok: true };
+});
+
+// =====================================================================
+// PHASE 19: RESCHEDULE. Patient moves a booking to another real, free slot. The doctor must confirm again.
+// =====================================================================
+exports.rescheduleAppointment = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  if (req.auth.token.role !== 'patient') throw new HttpsError('permission-denied', 'Patients only.');
+  const { id, date, time } = req.data || {};
+  if (typeof id !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !/^\d{2}:\d{2}$/.test(time || '')) throw new HttpsError('invalid-argument', 'Bad request.');
+  const now = istNow(), ahead = (new Date(date + 'T00:00:00Z') - new Date(now.date + 'T00:00:00Z')) / 864e5;
+  if (!(ahead >= 0 && ahead <= 30) || (date === now.date && toMins(time) < now.mins + 30)) throw new HttpsError('failed-precondition', 'That time is not available.');
+  const db = admin.firestore(), ref = db.doc(`appointments/${id}`), a0 = await ref.get();
+  if (!a0.exists || a0.data().patientUid !== req.auth.uid) throw new HttpsError('permission-denied', 'Not your appointment.');
+  const doctorUid = a0.data().doctorUid;
+  const [d, s] = await Promise.all([db.doc(`doctors/${doctorUid}`).get(), db.doc(`doctor_schedules/${doctorUid}`).get()]);
+  if (!d.exists || d.data().verified !== true || d.data().active === false) throw new HttpsError('not-found', 'Doctor not available.');
+  if (!s.exists || !validSlots(s.data(), date).includes(time)) throw new HttpsError('invalid-argument', 'Not a valid slot.');
+  const newLock = `${doctorUid}_${date}_${time.replace(':', '')}`, nRef = db.doc(`booked_slots/${newLock}`);
+  await db.runTransaction(async (tx) => {
+    const [a, n] = await Promise.all([tx.get(ref), tx.get(nRef)]);
+    const x = a.data();
+    if (!['pending', 'confirmed', 'rescheduled'].includes(x.status)) throw new HttpsError('failed-precondition', 'Cannot reschedule.');
+    if (x.date < now.date || (x.date === now.date && toMins(x.time) <= now.mins)) throw new HttpsError('failed-precondition', 'Appointment already started.');
+    if ((x.rescheduleCount || 0) >= 2) throw new HttpsError('resource-exhausted', 'Rescheduled too many times.');
+    if (n.exists) throw new HttpsError('already-exists', 'Slot taken.');
+    tx.set(nRef, { doctorUid, date, time, createdAt: FieldValue.serverTimestamp() });
+    tx.delete(db.doc(`booked_slots/${x.lockId}`));
+    tx.update(ref, { date, time, lockId: newLock, status: 'rescheduled', rescheduleCount: (x.rescheduleCount || 0) + 1, rescheduledFrom: { date: x.date, time: x.time },
+      statusHistory: FieldValue.arrayUnion({ status: 'rescheduled', by: req.auth.uid, at: admin.firestore.Timestamp.now() }) });
+  });
+  await notify(doctorUid, 'appt_rescheduled');
   return { ok: true };
 });
