@@ -30,7 +30,7 @@ function paint() {
   rows.sort((a, b) => by === 'price' ? a.price - b.price : by === 'rating' ? avg(b) - avg(a) : a.turnaroundHours - b.turnaroundHours);
   $('empty').hidden = rows.length > 0; const box = $('list'); box.replaceChildren();
   for (const p of rows) {
-    const c = el('article', 'card dr'), h = el('h3', '', p.lab.name); h.append(el('span', 'badge', t('dr.verified'))); c.append(h);
+    const c = el('article', 'card dr'), h = el('h3', '', p.lab.name); h.append(el('span', 'badge', t('dr.verified'))); if (p.lab.featured) h.append(el('span', 'tag', t('ft.tag'))); c.append(h);
     const pe = el('p', 'price', `₹${p.price}`); if (p.originalPrice > p.price) { pe.append(el('s', '', `₹${p.originalPrice}`)); }
     c.append(pe);
     if (p.originalPrice > p.price) c.append(el('p', 'off', t('cmp.off').replace('{n}', Math.round((1 - p.price / p.originalPrice) * 100))));

@@ -1,0 +1,26 @@
+<!doctype html><html lang="en"><head><title>AAROGYA ORBIT – Privacy center</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#18251D"><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"><link rel="stylesheet" href="/css/app.css"></head><body>
+<header class="header"><div class="container"><a href="/dashboard.html"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><button class="btn btn-ghost" id="logout" data-i18n="dash.logout"></button></div></div></header>
+<nav class="subnav" aria-label="Account"><div class="container"><a href="/dashboard.html" data-i18n="nav.home"></a><a href="/privacy-center.html" data-i18n="pc.title" aria-current="page"></a><a href="/support.html" data-i18n="nav.support"></a></div></nav>
+<main class="container page" id="app" hidden>
+<h1 data-i18n="pc.title"></h1><p class="sub" data-i18n="pc.sub"></p>
+<div id="msg" class="msg" role="status" aria-live="polite" hidden></div>
+
+<h2 class="sec" data-i18n="pc.notif"></h2>
+<section class="panel"><label class="check"><input type="checkbox" id="reminders"><span data-i18n="pc.reminders"></span></label>
+<label class="check"><input type="checkbox" id="updates"><span data-i18n="pc.updates"></span></label>
+<p class="mini" data-i18n="pc.alwaysNote"></p><button class="btn btn-primary" id="savePrefs" type="button" style="margin-top:10px" data-i18n="prof.save"></button></section>
+
+<h2 class="sec" data-i18n="pc.data"></h2>
+<section class="panel"><p data-i18n="pc.dataNote"></p><button class="btn btn-ghost" id="export" type="button" style="margin-top:10px" data-i18n="pc.download"></button></section>
+
+<h2 class="sec" data-i18n="pc.shares"></h2>
+<p class="notice" id="noShares" hidden data-i18n="pc.noShares"></p><div class="grid" id="shares" style="grid-template-columns:1fr"></div>
+
+<h2 class="sec" data-i18n="pc.access"></h2>
+<p class="notice" id="noAccess" hidden data-i18n="rec.noHistory"></p><div id="access"></div>
+
+<h2 class="sec" data-i18n="pc.delete"></h2>
+<section class="panel"><p data-i18n="pc.deleteNote"></p><p class="notice" id="delState" hidden style="margin:10px 0"></p>
+<div id="delForm"><div class="field"><label for="reason" data-i18n="pc.reason"></label><textarea id="reason" maxlength="300"></textarea></div>
+<button class="btn btn-ghost danger" id="delete" type="button" data-i18n="pc.requestDelete"></button></div></section>
+</main><script type="module" src="/js/privacy-center.js"></script></body></html>

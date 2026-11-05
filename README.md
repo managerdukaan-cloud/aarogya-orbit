@@ -28,18 +28,29 @@ patient · doctor · lab · hospital · admin
 | Reviews and ratings (genuine, one per finished visit, admin can hide) | Built, **not yet tested** |
 | Appointment reschedule (max 2, doctor re-confirms) | Built, **not yet tested** |
 | Health packages (admin-defined, lab prices, exact tests shown, bookable) | Built, **not yet tested** |
-| Subscriptions and coupons | **Not built** |
+| Privacy center: download my data, consent/sharing view, access history, notification preferences, deletion request | Built, **not yet tested** |
+| Rate limits on sensitive actions (booking, sharing, payment, reviews, tickets, invitations) | Built, **not yet tested** |
+| Daily in-app reminders (appointment, sample collection, follow-up, plan ending) | Built, **not yet tested** (needs Cloud Scheduler) |
+| Homepage banners, featured (sponsored) labels, coupons, provider plan tracking | Built, **not yet tested**. Plans only record status; they do not charge anyone |
 | Email, SMS, WhatsApp, push notifications | **Not built** – needs provider accounts and consent flow |
 | AI health assistant | **Not built** – needs consent design and a data-processing agreement first |
 | Lab/hospital staff accounts, ABDM | **Not built** |
 | Service worker / offline | **Not built** on purpose (avoids stale private pages) |
+
+## Handling an account deletion request (manual, on purpose)
+Admin > Data requests shows each request. Nothing is erased automatically, because some clinical and payment records may have to be kept by law. For each request, with legal advice on retention:
+1. Decide what must be kept (prescriptions, bookings, payments) and for how long.
+2. Remove what can go: the user's uploaded files in Storage `records/<uid>/`, their `family_members`, `medical_records`, `consents`, `notifications`, and profile fields.
+3. Disable or delete the Auth user (Firebase Console > Authentication).
+4. Mark the request Completed with a note saying what was done and why anything was kept. The person is notified.
 
 ## Known limitations
 - One role per account. A doctor, lab or hospital registers with its own email.
 - One test per lab booking on screen (server accepts up to 10).
 - No distance sorting or ratings (no real data yet).
 - Firestore security rules and Storage rules were reviewed by reading, not by an emulator test suite. Write and run rules tests before launch.
-- No rate limiting beyond Firebase defaults.
+- Rate limits are simple per-person counters; add Firebase App Check and abuse monitoring before launch.
+- Reminders are in-app only. Email, SMS and WhatsApp are not connected.
 
 ## Launch checklist
 1. **Delete all test data**: test doctors (`doctors`), labs (`labs`), hospitals, appointments, bookings, records, tickets, and test Auth users.

@@ -35,6 +35,7 @@ function render() {
     && (!lg || (x.languages || []).includes(lg)) && (!mf || x.fee <= mf));
   const by = $('sort').value;
   list.sort((a, b) => by === 'fee' ? a.fee - b.fee : by === 'rating' ? ((b.ratingCount ? b.ratingSum / b.ratingCount : 0) - (a.ratingCount ? a.ratingSum / a.ratingCount : 0)) : by === 'exp' ? b.experience - a.experience : a.name.localeCompare(b.name));
+  list = [...list.filter(x => x.featured), ...list.filter(x => !x.featured)]; // sponsored listings are shown first and always labelled
   $('empty').hidden = list.length > 0;
   $('empty').textContent = t(docs.length ? 'dr.noMatch' : 'dr.empty');
   const box = $('list'); box.replaceChildren();
@@ -42,6 +43,7 @@ function render() {
     const c = document.createElement('article'); c.className = 'card dr';
     const h = document.createElement('h3'); h.append(document.createTextNode(x.name));
     const v = document.createElement('span'); v.className = 'badge'; v.textContent = t('dr.verified'); h.append(v);
+    if (x.featured) { const f = document.createElement('span'); f.className = 'tag'; f.textContent = t('ft.tag'); h.append(f); }
     c.append(h, line('meta', `${specName(x.speciality)} · ${x.qualification}`),
       line('', t('dr.exp').replace('{n}', x.experience)), line('fee', t('dr.fee').replace('{n}', x.fee)),
       line('meta', `${x.clinicName}, ${x.address}`),

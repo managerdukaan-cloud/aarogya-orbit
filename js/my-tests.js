@@ -35,7 +35,7 @@ function render() {
     if (b.paymentStatus === 'paid') { const rc = el('a', 'btn btn-ghost', t('pay.receipt')); rc.href = `/receipt.html?p=${encodeURIComponent(b.paymentId)}`; act.append(rc); }
     else if (canPay && b.status !== 'cancelled') {
       const pb = el('button', 'btn btn-primary', t('pay.payNow').replace('{n}', b.total));
-      pb.onclick = async () => { pb.disabled = true; try { await payOnline('diagnostic', b.id, b.labName); say('msg', 'pay.done', true, t); } catch (e) { say('msg', e.message === 'dismissed' ? 'pay.cancelled' : 'pay.failed', false, t); } await load(); };
+      pb.onclick = async () => { pb.disabled = true; try { await payOnline('diagnostic', b.id, b.labName); say('msg', 'pay.done', true, t); } catch (e) { say('msg', e.message === 'dismissed' ? 'pay.cancelled' : e.code === 'functions/invalid-argument' ? 'pay.badCoupon' : 'pay.failed', false, t); } await load(); };
       act.append(pb);
     }
     if (b.status === 'report_ready' && !b.reviewId) { const rv = el('a', 'btn btn-ghost', t('rv.rateLab')); rv.href = `/review.html?k=lab&id=${encodeURIComponent(b.id)}`; act.append(rv); }

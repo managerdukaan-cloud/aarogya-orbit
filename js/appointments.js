@@ -31,7 +31,7 @@ function render() {
     if (a.paymentStatus === 'paid') { c.append(line('meta', t('pay.paid'))); const rc = document.createElement('a'); rc.className = 'btn btn-ghost'; rc.href = `/receipt.html?p=${encodeURIComponent(a.paymentId)}`; rc.textContent = t('pay.receipt'); c.append(rc); }
     else if (canPay && a.status !== 'cancelled') {
       const pb = document.createElement('button'); pb.className = 'btn btn-primary'; pb.textContent = t('pay.payNow').replace('{n}', a.fee);
-      pb.onclick = async () => { pb.disabled = true; try { await payOnline('appointment', a.id, `Consultation with ${a.doctorName}`); say('msg', 'pay.done', true, t); } catch (e) { say('msg', e.message === 'dismissed' ? 'pay.cancelled' : 'pay.failed', false, t); } await load(); };
+      pb.onclick = async () => { pb.disabled = true; try { await payOnline('appointment', a.id, `Consultation with ${a.doctorName}`); say('msg', 'pay.done', true, t); } catch (e) { say('msg', e.message === 'dismissed' ? 'pay.cancelled' : e.code === 'functions/invalid-argument' ? 'pay.badCoupon' : 'pay.failed', false, t); } await load(); };
       c.append(pb);
     }
     if (a.status === 'completed' && !a.reviewId) { const rv = document.createElement('a'); rv.className = 'btn btn-ghost'; rv.href = `/review.html?k=doctor&id=${encodeURIComponent(a.id)}`; rv.textContent = t('rv.rate'); c.append(rv); }

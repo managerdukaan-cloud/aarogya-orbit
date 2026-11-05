@@ -1,0 +1,31 @@
+<!doctype html><html lang="en"><head><title>AAROGYA ORBIT – Growth tools</title><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#18251D"><meta name="robots" content="noindex,nofollow"><link rel="icon" href="/assets/logo/favicon.svg" type="image/svg+xml"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet"><link rel="stylesheet" href="/css/variables.css"><link rel="stylesheet" href="/css/base.css"><link rel="stylesheet" href="/css/auth.css"><link rel="stylesheet" href="/css/app.css"></head><body>
+<header class="header"><div class="container"><a href="/dashboard.html"><img src="/assets/logo/logo-light.svg" alt="AAROGYA ORBIT"></a><div class="nav-actions"><div class="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true">EN</button><button data-lang="hi" aria-pressed="false">हिं</button></div><button class="btn btn-ghost" id="logout" data-i18n="dash.logout"></button></div></div></header>
+<nav class="subnav" aria-label="Admin"><div class="container"><a href="/admin-dashboard.html" data-i18n="ad.nav"></a><a href="/admin.html" data-i18n="ad.reviews"></a><a href="/admin-tests.html" data-i18n="adm.catalogue"></a><a href="/admin-packages.html" data-i18n="pk.admin"></a><a href="/admin-payments.html" data-i18n="ad.payments"></a><a href="/admin-growth.html" aria-current="page" data-i18n="gr.nav"></a><a href="/admin-ratings.html" data-i18n="ad.ratings"></a><a href="/admin-users.html" data-i18n="ad.users"></a><a href="/admin-requests.html" data-i18n="rq.nav"></a><a href="/admin-support.html" data-i18n="ad.support"></a><a href="/admin-audit.html" data-i18n="ad.audit"></a></div></nav>
+<main class="container page" id="app" hidden style="max-width:900px">
+<h1 data-i18n="gr.nav"></h1><p class="sub" data-i18n="gr.sub"></p>
+<div id="msg" class="msg" role="status" aria-live="polite" hidden></div>
+
+<h2 class="sec" data-i18n="gr.banners"></h2>
+<section class="panel"><div class="row2"><div class="field"><label for="b_en" data-i18n="gr.textEn"></label><input id="b_en" type="text" maxlength="160"></div><div class="field"><label for="b_hi" data-i18n="gr.textHi"></label><input id="b_hi" type="text" maxlength="160"></div></div>
+<div class="field"><label for="b_link" data-i18n="gr.link"></label><input id="b_link" type="text" maxlength="200" placeholder="/doctors.html"></div>
+<button class="btn btn-primary" id="addBanner" type="button" data-i18n="gr.addBanner"></button><div id="bannerList" style="margin-top:14px"></div></section>
+
+<h2 class="sec" data-i18n="gr.coupons"></h2>
+<section class="panel"><div class="row2"><div class="field"><label for="c_code" data-i18n="gr.code"></label><input id="c_code" type="text" maxlength="30"></div>
+<div class="field"><label for="c_type" data-i18n="gr.type"></label><select id="c_type"><option value="percent" data-i18n="gr.percent"></option><option value="flat" data-i18n="gr.flat"></option></select></div></div>
+<div class="row2"><div class="field"><label for="c_value" data-i18n="gr.value"></label><input id="c_value" type="text" inputmode="decimal" maxlength="7"></div>
+<div class="field"><label for="c_max" data-i18n="gr.maxUses"></label><input id="c_max" type="text" inputmode="numeric" maxlength="6" placeholder="0"></div></div>
+<div class="row2"><div class="field"><label for="c_exp" data-i18n="gr.expires"></label><input id="c_exp" type="date"></div>
+<div class="field"><label for="c_for" data-i18n="gr.appliesTo"></label><select id="c_for"><option value="all" data-i18n="gr.all"></option><option value="appointment" data-i18n="gr.appt"></option><option value="diagnostic" data-i18n="gr.diag"></option></select></div></div>
+<p class="mini" data-i18n="gr.couponNote"></p><button class="btn btn-primary" id="addCoupon" type="button" style="margin-top:10px" data-i18n="gr.addCoupon"></button><div id="couponList" style="margin-top:14px"></div></section>
+
+<h2 class="sec" data-i18n="gr.subs"></h2>
+<section class="panel"><p class="mini" data-i18n="gr.subNote"></p>
+<div class="field"><label for="s_who" data-i18n="gr.provider"></label><select id="s_who"></select></div>
+<div class="row2"><div class="field"><label for="s_plan" data-i18n="gr.plan"></label><input id="s_plan" type="text" maxlength="60"></div><div class="field"><label for="s_amount" data-i18n="gr.amount"></label><input id="s_amount" type="text" inputmode="decimal" maxlength="9"></div></div>
+<div class="field"><label for="s_exp" data-i18n="gr.ends"></label><input id="s_exp" type="date"></div>
+<button class="btn btn-primary" id="setSub" type="button" data-i18n="gr.setSub"></button><div id="subList" style="margin-top:14px"></div></section>
+
+<h2 class="sec" data-i18n="gr.featured"></h2>
+<section class="panel"><p class="mini" data-i18n="gr.featNote"></p><div id="featList"></div></section>
+</main><script type="module" src="/js/admin-growth.js"></script></body></html>

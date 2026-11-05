@@ -1,4 +1,5 @@
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
+const { onSchedule } = require('firebase-functions/v2/scheduler');
 const crypto = require('crypto');
 const { defineString, defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
@@ -105,6 +106,7 @@ function validSlots(sch, date) {
 exports.bookAppointment = onCall(REGION, async (req) => {
   if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
   if (req.auth.token.role !== 'patient') throw new HttpsError('permission-denied', 'Only patients can book.');
+  await rateLimit(req.auth.uid, 'book_appt', 10, 3600);
   const { doctorUid, date, time, memberId } = req.data || {};
   if (typeof doctorUid !== 'string' || typeof memberId !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !/^\d{2}:\d{2}$/.test(time || ''))
     throw new HttpsError('invalid-argument', 'Bad request.');
@@ -276,6 +278,7 @@ exports.getLabApplicationDocument = onCall(REGION, async (req) => {
 exports.bookDiagnostic = onCall(REGION, async (req) => {
   if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
   if (req.auth.token.role !== 'patient') throw new HttpsError('permission-denied', 'Only patients can book.');
+  await rateLimit(req.auth.uid, 'book_lab', 10, 3600);
   const { labUid, testIds: rawIds, packageId, memberId, type, date, time, phone, address } = req.data || {};
   const testIds = packageId ? ['__package__'] : rawIds;
   if (typeof labUid !== 'string' || !Array.isArray(testIds) || testIds.length < 1 || testIds.length > 10 || new Set(testIds).size !== testIds.length
@@ -431,8 +434,14 @@ exports.getReportFile = onCall(REGION, async (req) => {
 // NOTIFICATIONS (in-app). Text lives in the translation files, so each message shows in the user's language.
 // Messages never contain medical details: only that something happened. Best effort: a failure here never breaks the real action.
 // =====================================================================
+const REMINDERS = ['appt_reminder', 'collection_reminder', 'followup_reminder'];
+const ALWAYS = ['verified', 'rejected', 'ticket_reply', 'payment_paid', 'payment_refunded', 'sub_expiring', 'sub_expired', 'deletion_update']; // never switched off
 async function notify(uid, type, params = {}) {
-  try { await admin.firestore().collection('notifications').add({ uid, type, params, read: false, createdAt: FieldValue.serverTimestamp() }); }
+  try {
+    const pf = (await admin.firestore().doc(`notification_preferences/${uid}`).get()).data() || {};
+    if (!ALWAYS.includes(type) && (REMINDERS.includes(type) ? pf.reminders === false : pf.updates === false)) return; // respect the person's choice
+    await admin.firestore().collection('notifications').add({ uid, type, params, read: false, createdAt: FieldValue.serverTimestamp() });
+  }
   catch (e) { console.error('notify failed', type, e.message); }
 }
 const count = async (q) => (await q.count().get()).data().count;
@@ -447,6 +456,7 @@ async function logAccess(recordId, ownerUid, by, byRole, action) {
 exports.shareRecord = onCall(REGION, async (req) => {
   if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
   if (req.auth.token.role !== 'patient') throw new HttpsError('permission-denied', 'Patients only.');
+  await rateLimit(req.auth.uid, 'share', 20, 3600);
   const { recordId, doctorUid } = req.data || {};
   if (typeof recordId !== 'string' || typeof doctorUid !== 'string') throw new HttpsError('invalid-argument', 'Bad request.');
   const db = admin.firestore(), uid = req.auth.uid;
@@ -534,6 +544,7 @@ exports.getHospitalApplicationDocument = onCall(REGION, async (req) => {
 exports.inviteDoctor = onCall(REGION, async (req) => {
   if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
   if (req.auth.token.role !== 'hospital') throw new HttpsError('permission-denied', 'Hospitals only.');
+  await rateLimit(req.auth.uid, 'invite', 30, 3600);
   const reg = clip(req.data?.regNumber, 40); if (reg.length < 3) throw new HttpsError('invalid-argument', 'Registration number needed.');
   const db = admin.firestore(), hid = req.auth.uid;
   const [h, q] = await Promise.all([db.doc(`hospitals/${hid}`).get(), db.collection('doctors').where('regNumber', '==', reg).limit(2).get()]);
@@ -610,6 +621,7 @@ exports.setUserStatus = onCall(REGION, async (req) => {
 // Support tickets: the owner opens one (client write, see rules). Replies and closing go through here so both sides are trusted.
 exports.replyTicket = onCall(REGION, async (req) => {
   if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  await rateLimit(req.auth.uid, 'ticket_reply', 30, 3600);
   const { id } = req.data || {}, text = clip(req.data?.text, 1000);
   if (typeof id !== 'string' || text.length < 2) throw new HttpsError('invalid-argument', 'Bad request.');
   const ref = admin.firestore().doc(`support_tickets/${id}`), t = await ref.get(), isAdmin = req.auth.token.role === 'admin';
@@ -660,6 +672,7 @@ exports.paymentConfig = onCall({ ...REGION, secrets: [RZP_SECRET] }, async (req)
 exports.createPaymentOrder = onCall({ ...REGION, secrets: [RZP_SECRET] }, async (req) => {
   if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
   if (req.auth.token.role !== 'patient') throw new HttpsError('permission-denied', 'Patients only.');
+  await rateLimit(req.auth.uid, 'pay_order', 20, 3600);
   const { kind, id } = req.data || {};
   if (!['appointment', 'diagnostic'].includes(kind) || typeof id !== 'string') throw new HttpsError('invalid-argument', 'Bad request.');
   const s = await platformSettings();
@@ -669,13 +682,23 @@ exports.createPaymentOrder = onCall({ ...REGION, secrets: [RZP_SECRET] }, async 
   const b = snap.data();
   if (b.paymentStatus === 'paid') throw new HttpsError('already-exists', 'Already paid.');
   if (!['pending', 'confirmed', 'rescheduled', 'collection_assigned', 'en_route', 'arrived', 'sample_collected', 'received_at_lab', 'processing', 'checked_in', 'in_consultation', 'completed', 'report_ready'].includes(b.status)) throw new HttpsError('failed-precondition', 'Booking is not payable.');
-  const amount = kind === 'appointment' ? b.fee : b.total, paise = Math.round(Number(amount) * 100);
+  const gross = Number(kind === 'appointment' ? b.fee : b.total);
+  let amount = gross, discount = 0, couponCode = '';
+  const code = clip(req.data?.couponCode, 30).toUpperCase();
+  if (code) { // the discount is worked out here from our own coupon list, never trusted from the browser
+    const c = await db.doc(`coupons/${code}`).get(), x = c.data();
+    if (!c.exists || x.active !== true || (x.expiresAt && x.expiresAt.toMillis() < Date.now()) || (x.maxUses > 0 && (x.used || 0) >= x.maxUses) || (x.appliesTo && x.appliesTo !== 'all' && x.appliesTo !== kind))
+      throw new HttpsError('invalid-argument', 'Coupon is not valid.');
+    discount = Math.min(gross - 1, Math.round((x.type === 'percent' ? gross * x.value / 100 : x.value) * 100) / 100);
+    amount = Math.round((gross - discount) * 100) / 100; couponCode = code;
+  }
+  const paise = Math.round(amount * 100);
   if (!(paise >= 100)) throw new HttpsError('failed-precondition', 'Nothing to pay.');
   const order = await rzp('/orders', { amount: paise, currency: 'INR', receipt: id.slice(0, 40), notes: { kind, refId: id } });
   const names = kind === 'appointment' ? `Consultation with ${b.doctorName}` : (b.packageName_en || b.tests.map(t => t.name_en).join(', ')).slice(0, 200);
   await db.doc(`payments/${order.id}`).set({
     kind, refId: id, patientUid: req.auth.uid, patientName: b.memberName, providerUid: kind === 'appointment' ? b.doctorUid : b.labUid, providerName: kind === 'appointment' ? b.doctorName : b.labName,
-    description: names, amount: Number(amount), amountPaise: paise, currency: 'INR', orderId: order.id, status: 'created', createdAt: FieldValue.serverTimestamp()
+    description: names, amountGross: gross, discount, couponCode, amount, amountPaise: paise, currency: 'INR', orderId: order.id, status: 'created', createdAt: FieldValue.serverTimestamp()
   });
   return { orderId: order.id, amountPaise: paise, keyId: RZP_KEY.value() };
 });
@@ -691,9 +714,11 @@ async function markPaid(orderId, paymentId, expectPaise) {
     if (x.status === 'paid' || x.status === 'refunded') return;
     if (expectPaise != null && Number(expectPaise) !== x.amountPaise) throw new HttpsError('failed-precondition', 'Amount mismatch.');
     const bRef = db.doc(`${x.kind === 'appointment' ? 'appointments' : 'diagnostic_bookings'}/${x.refId}`), b = await tx.get(bRef);
+    const cRef = x.couponCode ? db.doc(`coupons/${x.couponCode}`) : null, cp = cRef ? await tx.get(cRef) : null;
     const commission = Math.min(x.amount, Math.round((x.amount * set.commissionPct / 100 + set.fixedFee) * 100) / 100);
     tx.update(pRef, { status: 'paid', razorpayPaymentId: paymentId, paidAt: FieldValue.serverTimestamp(), commission, providerShare: Math.round((x.amount - commission) * 100) / 100 });
     if (b.exists) tx.update(bRef, { paymentStatus: 'paid', paymentMode: 'online', paymentId: orderId });
+    if (cp?.exists) tx.update(cRef, { used: FieldValue.increment(1) });
     out = x;
   });
   if (out) await notify(out.patientUid, 'payment_paid');
@@ -748,6 +773,7 @@ exports.adminRefund = onCall({ ...REGION, secrets: [RZP_SECRET] }, async (req) =
 exports.submitReview = onCall(REGION, async (req) => {
   if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
   if (req.auth.token.role !== 'patient') throw new HttpsError('permission-denied', 'Patients only.');
+  await rateLimit(req.auth.uid, 'review', 10, 3600);
   const { kind, refId } = req.data || {}, rating = req.data?.rating, comment = clip(req.data?.comment, 500);
   if (!['doctor', 'lab'].includes(kind) || typeof refId !== 'string' || !Number.isInteger(rating) || rating < 1 || rating > 5) throw new HttpsError('invalid-argument', 'Bad request.');
   const db = admin.firestore(), uid = req.auth.uid, bRef = db.doc(`${kind === 'doctor' ? 'appointments' : 'diagnostic_bookings'}/${refId}`), rRef = db.doc(`reviews/${kind}_${refId}`);
@@ -786,6 +812,7 @@ exports.moderateReview = onCall(REGION, async (req) => {
 exports.rescheduleAppointment = onCall(REGION, async (req) => {
   if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
   if (req.auth.token.role !== 'patient') throw new HttpsError('permission-denied', 'Patients only.');
+  await rateLimit(req.auth.uid, 'reschedule', 10, 3600);
   const { id, date, time } = req.data || {};
   if (typeof id !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date || '') || !/^\d{2}:\d{2}$/.test(time || '')) throw new HttpsError('invalid-argument', 'Bad request.');
   const now = istNow(), ahead = (new Date(date + 'T00:00:00Z') - new Date(now.date + 'T00:00:00Z')) / 864e5;
@@ -810,5 +837,111 @@ exports.rescheduleAppointment = onCall(REGION, async (req) => {
       statusHistory: FieldValue.arrayUnion({ status: 'rescheduled', by: req.auth.uid, at: admin.firestore.Timestamp.now() }) });
   });
   await notify(doctorUid, 'appt_rescheduled');
+  return { ok: true };
+});
+
+// =====================================================================
+// PHASE 20: PRIVACY AND TRUST (access to your data, deletion requests, rate limits)
+// =====================================================================
+async function rateLimit(uid, action, max, windowSec) { // stops a script or a mistake from hammering a sensitive action
+  const db = admin.firestore(), ref = db.doc(`rate_limits/${uid}_${action}`), now = Date.now();
+  await db.runTransaction(async (tx) => {
+    const d = (await tx.get(ref)).data() || {}; let start = d.start || now, c = d.count || 0;
+    if (now - start > windowSec * 1000) { start = now; c = 0; }
+    if (c >= max) throw new HttpsError('resource-exhausted', 'Too many requests. Please wait and try again.');
+    tx.set(ref, { start, count: c + 1 });
+  });
+}
+const plain = (o) => { // Firestore timestamps and nested values -> plain JSON
+  if (o && typeof o.toDate === 'function') return o.toDate().toISOString();
+  if (Array.isArray(o)) return o.map(plain);
+  if (o && typeof o === 'object') return Object.fromEntries(Object.entries(o).map(([k, v]) => [k, plain(v)]));
+  return o;
+};
+// A person can download the data we hold about them.
+exports.exportMyData = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  const uid = req.auth.uid; await rateLimit(uid, 'export', 5, 86400);
+  const db = admin.firestore(), q = async (c, f) => (await db.collection(c).where(f, '==', uid).get()).docs.map(d => plain({ id: d.id, ...d.data() }));
+  const [profile, family, appointments, labBookings, prescriptions, records, shares, accessHistory, tickets, payments, notifications] = await Promise.all([
+    db.doc(`users/${uid}`).get().then(d => plain(d.data() || {})), q('family_members', 'ownerUid'), q('appointments', 'patientUid'), q('diagnostic_bookings', 'patientUid'),
+    q('prescriptions', 'patientUid'), q('medical_records', 'ownerUid'), q('consents', 'ownerUid'), q('record_access', 'ownerUid'), q('support_tickets', 'ownerUid'), q('payments', 'patientUid'), q('notifications', 'uid')]);
+  records.forEach(r => { if (r.file) delete r.file.path; }); // the files themselves are in the Records page
+  await db.collection('audit_logs').add({ action: 'data_exported', targetUid: uid, by: uid, at: FieldValue.serverTimestamp() });
+  return { exportedAt: new Date().toISOString(), note: 'Uploaded files are not included here; download them from the Records page.', profile, family, appointments, labBookings, prescriptions, records, shares, accessHistory, tickets, payments, notifications };
+});
+// Asking for deletion. Nothing is erased automatically: an admin reviews it, because some clinical and payment records may have to be kept by law.
+exports.requestAccountDeletion = onCall(REGION, async (req) => {
+  if (!req.auth) throw new HttpsError('unauthenticated', 'Login required.');
+  const uid = req.auth.uid; await rateLimit(uid, 'delete_req', 3, 86400);
+  const db = admin.firestore(), ref = db.doc(`deletion_requests/${uid}`), ex = await ref.get();
+  if (ex.exists && ['open', 'in_progress'].includes(ex.data().status)) throw new HttpsError('already-exists', 'Request already open.');
+  const u = (await db.doc(`users/${uid}`).get()).data() || {};
+  await ref.set({ uid, name: u.name || '', email: u.email || '', role: u.role || '', reason: clip(req.data?.reason, 300), status: 'open', note: '', createdAt: FieldValue.serverTimestamp() });
+  await db.collection('audit_logs').add({ action: 'deletion_requested', targetUid: uid, by: uid, at: FieldValue.serverTimestamp() });
+  return { ok: true };
+});
+exports.updateDeletionRequest = onCall(REGION, async (req) => {
+  requireAdmin(req);
+  const { uid, status } = req.data || {}, note = clip(req.data?.note, 300);
+  if (typeof uid !== 'string' || !['in_progress', 'completed', 'rejected'].includes(status)) throw new HttpsError('invalid-argument', 'Bad request.');
+  if (['completed', 'rejected'].includes(status) && note.length < 5) throw new HttpsError('invalid-argument', 'A note is required.');
+  const ref = admin.firestore().doc(`deletion_requests/${uid}`); if (!(await ref.get()).exists) throw new HttpsError('not-found', 'Not found.');
+  await ref.update({ status, note, handledBy: req.auth.uid, updatedAt: FieldValue.serverTimestamp() });
+  await admin.firestore().collection('audit_logs').add({ action: 'deletion_' + status, targetUid: uid, by: req.auth.uid, at: FieldValue.serverTimestamp() });
+  await notify(uid, 'deletion_update');
+  return { ok: true };
+});
+
+// =====================================================================
+// PHASE 21: DAILY REMINDERS (in-app). Runs every morning, India time.
+// =====================================================================
+exports.dailyReminders = onSchedule({ ...REGION, schedule: '0 8 * * *', timeZone: 'Asia/Kolkata' }, async () => {
+  const db = admin.firestore(), today = istNow().date, tomorrow = new Date(new Date(today + 'T00:00:00Z').getTime() + 864e5).toISOString().slice(0, 10);
+  for (const d of (await db.collection('appointments').where('date', '==', tomorrow).get()).docs) {
+    const x = d.data(); if (!['pending', 'confirmed', 'rescheduled'].includes(x.status) || x.reminderSent) continue;
+    await notify(x.patientUid, 'appt_reminder'); await d.ref.update({ reminderSent: true });
+  }
+  for (const d of (await db.collection('diagnostic_bookings').where('date', '==', tomorrow).get()).docs) {
+    const x = d.data(); if (!['confirmed', 'collection_assigned'].includes(x.status) || x.reminderSent) continue;
+    await notify(x.patientUid, 'collection_reminder'); await d.ref.update({ reminderSent: true });
+  }
+  for (const d of (await db.collection('prescriptions').where('followUpDate', '==', tomorrow).get()).docs) {
+    const x = d.data(); if (x.followReminderSent) continue;
+    await notify(x.patientUid, 'followup_reminder'); await d.ref.update({ followReminderSent: true });
+  }
+  for (const d of (await db.collection('subscriptions').get()).docs) { // provider subscriptions: warn a week before, then mark expired
+    const x = d.data(); if (x.status !== 'active' || !x.expiresAt) continue;
+    const left = Math.ceil((x.expiresAt.toMillis() - Date.now()) / 864e5);
+    if (left <= 0) { await d.ref.update({ status: 'expired' }); await notify(d.id, 'sub_expired'); }
+    else if (left <= 7 && !x.expiryWarned) { await d.ref.update({ expiryWarned: true }); await notify(d.id, 'sub_expiring'); }
+  }
+});
+
+// =====================================================================
+// PHASE 22: GROWTH TOOLS (featured label, subscription status). Banners and coupons are written by the admin page directly.
+// =====================================================================
+exports.setFeatured = onCall(REGION, async (req) => {
+  requireAdmin(req);
+  const { kind, id, featured } = req.data || {}, col = { doctor: 'doctors', lab: 'labs', hospital: 'hospitals' }[kind];
+  if (!col || typeof id !== 'string' || typeof featured !== 'boolean') throw new HttpsError('invalid-argument', 'Bad request.');
+  const ref = admin.firestore().doc(`${col}/${id}`); if (!(await ref.get()).exists) throw new HttpsError('not-found', 'Not found.');
+  await ref.update({ featured });
+  await admin.firestore().collection('audit_logs').add({ action: featured ? 'featured_on' : 'featured_off', targetUid: id, by: req.auth.uid, at: FieldValue.serverTimestamp() });
+  return { ok: true };
+});
+exports.setSubscription = onCall(REGION, async (req) => {
+  requireAdmin(req);
+  const { providerUid, expiresAt, cancel } = req.data || {}, plan = clip(req.data?.plan, 60), amount = Number(req.data?.amount);
+  if (typeof providerUid !== 'string') throw new HttpsError('invalid-argument', 'Bad request.');
+  const db = admin.firestore(), u = (await db.doc(`users/${providerUid}`).get()).data();
+  if (!u || !['doctor', 'lab', 'hospital'].includes(u.role)) throw new HttpsError('failed-precondition', 'Only doctors, labs and hospitals can have a plan.');
+  const ref = db.doc(`subscriptions/${providerUid}`);
+  if (cancel === true) { await ref.set({ status: 'cancelled', updatedAt: FieldValue.serverTimestamp() }, { merge: true }); }
+  else {
+    if (plan.length < 2 || !(amount >= 0 && amount <= 1000000) || !/^\d{4}-\d{2}-\d{2}$/.test(expiresAt || '') || expiresAt < istNow().date) throw new HttpsError('invalid-argument', 'Plan, amount and a future end date are needed.');
+    await ref.set({ providerUid, role: u.role, plan, amount, expiresAt: admin.firestore.Timestamp.fromDate(new Date(expiresAt + 'T18:29:59Z')), status: 'active', expiryWarned: false, setBy: req.auth.uid, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  }
+  await db.collection('audit_logs').add({ action: cancel === true ? 'subscription_cancelled' : 'subscription_set', targetUid: providerUid, by: req.auth.uid, at: FieldValue.serverTimestamp() });
   return { ok: true };
 });

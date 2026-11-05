@@ -15,7 +15,7 @@ function render() {
   $('empty').hidden = list.length > 0; $('empty').textContent = t(hospitals.length ? 'hs.noMatch' : 'hs.empty');
   const box = $('list'); box.replaceChildren();
   for (const x of list) {
-    const c = el('article', 'card dr'), hh = el('h3', '', x.name); hh.append(el('span', 'badge', t('dr.verified')), el('span', 'tag', t('ha.' + x.type))); c.append(hh, el('p', 'meta', `${x.address} - ${x.pin}`));
+    const c = el('article', 'card dr'), hh = el('h3', '', x.name); hh.append(el('span', 'badge', t('dr.verified')), el('span', 'tag', t('ha.' + x.type))); if (x.featured) hh.append(el('span', 'tag', t('ft.tag'))); c.append(hh, el('p', 'meta', `${x.address} - ${x.pin}`));
     if (x.phone) c.append(el('p', 'meta', x.phone));
     if (x.departments?.length) { const w = el('div', 'row'); x.departments.forEach(d => w.append(el('span', 'tag', d))); c.append(w); }
     const dl = docsBy[x.id]; if (dl?.length) c.append(el('p', '', `${t('hs.doctors')}: ${dl.join(', ')}`));
