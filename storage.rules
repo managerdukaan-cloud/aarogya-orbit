@@ -28,7 +28,9 @@ service firebase.storage {
     // Lab reports: only the lab uploads (create only, no overwrite). Patients download through the getReportFile Cloud Function.
     match /lab_reports/{labUid}/{bookingId}/{file} {
       allow read: if request.auth != null && request.auth.uid == labUid;
-      allow create: if request.auth != null && request.auth.uid == labUid && request.auth.token.role == 'lab'
+      allow create: if request.auth != null
+        && ((request.auth.uid == labUid && request.auth.token.role == 'lab')
+            || (request.auth.token.role == 'staff' && request.auth.token.labUid == labUid && request.auth.token.canReports == true))
         && request.resource.size < 5 * 1024 * 1024
         && request.resource.contentType.matches('application/pdf|image/(jpeg|png)');
       allow update, delete: if false;

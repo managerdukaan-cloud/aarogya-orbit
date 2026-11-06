@@ -8,7 +8,7 @@ import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/fireba
 let users = [];
 const user = await requireUser(() => { fill(); render(); });
 if ((await user.getIdTokenResult(true)).claims.role !== 'admin') location.replace('/dashboard.html');
-function fill() { const s = $('role'), v = s.value; s.replaceChildren(new Option(t('ad.allRoles'), '')); ['patient', 'doctor', 'lab', 'hospital', 'admin'].forEach(r => s.add(new Option(t('role.' + r), r))); s.value = v; }
+function fill() { const s = $('role'), v = s.value; s.replaceChildren(new Option(t('ad.allRoles'), '')); ['patient', 'doctor', 'lab', 'staff', 'hospital', 'admin'].forEach(r => s.add(new Option(t('role.' + r), r))); s.value = v; }
 async function load() { users = (await getDocs(query(collection(db, 'users'), limit(200)))).docs.map(d => ({ id: d.id, ...d.data() })); fill(); render(); }
 function render() {
   const q = $('q').value.trim().toLowerCase(), r = $('role').value, box = $('list'); box.replaceChildren();

@@ -15,7 +15,7 @@ async function load() {
     getDoc(doc(db, 'notification_preferences', user.uid)), getDoc(doc(db, 'deletion_requests', user.uid))]);
   shares = c.docs.map(x => ({ id: x.id, ...x.data() })).filter(x => x.status === 'active' && x.expiresAt?.toMillis() > Date.now());
   access = a.docs.map(x => x.data()).sort((x, y) => (y.at?.seconds || 0) - (x.at?.seconds || 0)).slice(0, 30);
-  const pf = p.data() || {}; $('reminders').checked = pf.reminders !== false; $('updates').checked = pf.updates !== false;
+  const pf = p.data() || {}; $('reminders').checked = pf.reminders !== false; $('updates').checked = pf.updates !== false; $('email').checked = pf.email === true;
   del = d.exists() ? d.data() : null; render();
 }
 function render() {
@@ -31,7 +31,7 @@ function render() {
   $('delForm').hidden = !!open; $('delState').hidden = !del;
   if (del) $('delState').textContent = t('pc.del.' + del.status) + (del.note ? ` — ${del.note}` : '');
 }
-$('savePrefs').onclick = async () => { try { await setDoc(doc(db, 'notification_preferences', user.uid), { reminders: $('reminders').checked, updates: $('updates').checked, updatedAt: serverTimestamp() }); say('msg', 'prof.saved', true, t); } catch { say('msg', 'err.generic', false, t); } };
+$('savePrefs').onclick = async () => { try { await setDoc(doc(db, 'notification_preferences', user.uid), { reminders: $('reminders').checked, updates: $('updates').checked, email: $('email').checked, updatedAt: serverTimestamp() }); say('msg', 'prof.saved', true, t); } catch { say('msg', 'err.generic', false, t); } };
 $('export').onclick = async () => {
   $('export').disabled = true;
   try { const d = (await call('exportMyData')).data, a = el('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' })); a.download = 'aarogya-orbit-my-data.json'; a.click(); say('msg', 'pc.downloaded', true, t); }
@@ -44,5 +44,10 @@ $('delete').onclick = async () => {
   catch (e) { say('msg', e.code === 'functions/already-exists' ? 'pc.already' : 'err.generic', false, t); }
   $('delete').disabled = false;
 };
-await load();
+async function aiPaint() {
+  let on = false; try { on = (await getDoc(doc(db, 'ai_consent', user.uid))).data()?.accepted === true; } catch {}
+  $('aiState').textContent = t(on ? 'ai.consented' : 'ai.notConsented'); $('aiToggle').textContent = t(on ? 'ai.withdraw' : 'ai.openAssistant'); $('aiToggle').dataset.on = on ? '1' : '';
+}
+$('aiToggle').onclick = async () => { if ($('aiToggle').dataset.on) { try { await call('setAiConsent', { accept: false }); await aiPaint(); say('msg', 'adm.done', true, t); } catch { say('msg', 'err.generic', false, t); } } else location.href = '/assistant.html'; };
+await load(); await aiPaint();
 $('app').hidden = false;

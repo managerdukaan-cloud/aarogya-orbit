@@ -11,7 +11,7 @@ function paint() {
   const { role, name } = state;
   $('greet').textContent = t('dash.greet').replace('{name}', firstName(name) || '');
   $('role').textContent = t('role.' + role);
-  for (const [box, r] of [['patientBox', 'patient'], ['adminBox', 'admin'], ['doctorBox', 'doctor'], ['labBox', 'lab'], ['hospitalBox', 'hospital']]) $(box).hidden = role !== r;
+  for (const [box, r] of [['patientBox', 'patient'], ['adminBox', 'admin'], ['doctorBox', 'doctor'], ['labBox', 'lab'], ['hospitalBox', 'hospital'], ['staffBox', 'staff']]) $(box).hidden = role !== r;
   $('soon').hidden = true;
 }
 const user = await requireUser(paint);

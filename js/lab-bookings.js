@@ -11,10 +11,13 @@ const NEXT_HOME = { confirmed: ['collection_assigned', 'cancelled'], collection_
 const NEXT_LAB = { confirmed: ['sample_collected', 'cancelled'], sample_collected: ['processing'] };
 let items = [];
 const user = await requireUser(render);
-if ((await user.getIdTokenResult(true)).claims.role !== 'lab') location.replace('/dashboard.html');
+const cl = (await user.getIdTokenResult(true)).claims;
+// the lab owner, or lab staff (who act for one lab with the permissions the owner gave)
+const labUid = cl.role === 'lab' ? user.uid : (cl.role === 'staff' && cl.canBookings === true ? cl.labUid : null), canReports = cl.role === 'lab' || (cl.role === 'staff' && cl.canReports === true);
+if (!labUid) location.replace('/dashboard.html');
 const call = (n, d) => httpsCallable(functions, n)(d);
 async function load() {
-  const s = await getDocs(query(collection(db, 'diagnostic_bookings'), where('labUid', '==', user.uid)));
+  const s = await getDocs(query(collection(db, 'diagnostic_bookings'), where('labUid', '==', labUid)));
   items = s.docs.map(x => ({ id: x.id, ...x.data() })); render();
 }
 const testNames = (b) => (b.packageName_en ? ((getLang() === 'hi' && b.packageName_hi) || b.packageName_en) + ': ' : '') + b.tests.map(x => (getLang() === 'hi' && x.name_hi) || x.name_en).join(', ');
@@ -39,7 +42,7 @@ function render() {
       };
       act.append(btn);
     }
-    if (['processing', 'report_ready'].includes(b.status)) {
+    if (canReports && ['processing', 'report_ready'].includes(b.status)) {
       const f = el('input'); f.type = 'file'; f.accept = 'application/pdf,image/jpeg,image/png'; f.setAttribute('aria-label', t('lab.reportFile'));
       const pub = el('button', 'btn btn-primary', t(b.status === 'report_ready' ? 'lab.amend' : 'lab.publish'));
       pub.onclick = async () => {
@@ -50,7 +53,7 @@ function render() {
         else if (!confirm(t('lab.publishAsk'))) return;
         pub.disabled = true;
         try {
-          const safe = file.name.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').slice(-60), path = `lab_reports/${user.uid}/${b.id}/${Date.now()}-${safe}`;
+          const safe = file.name.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').slice(-60), path = `lab_reports/${labUid}/${b.id}/${Date.now()}-${safe}`;
           await uploadBytes(ref(storage, path), file, { contentType: file.type });
           await call('publishReport', { bookingId: b.id, paths: [path], amendReason });
           say('msg', 'lab.published', true, t);

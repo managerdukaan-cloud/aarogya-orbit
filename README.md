@@ -32,9 +32,11 @@ patient · doctor · lab · hospital · admin
 | Rate limits on sensitive actions (booking, sharing, payment, reviews, tickets, invitations) | Built, **not yet tested** |
 | Daily in-app reminders (appointment, sample collection, follow-up, plan ending) | Built, **not yet tested** (needs Cloud Scheduler) |
 | Homepage banners, featured (sponsored) labels, coupons, provider plan tracking | Built, **not yet tested**. Plans only record status; they do not charge anyone |
-| Email, SMS, WhatsApp, push notifications | **Not built** – needs provider accounts and consent flow |
-| AI health assistant | **Not built** – needs consent design and a data-processing agreement first |
-| Lab/hospital staff accounts, ABDM | **Not built** |
+| Lab staff accounts (owner adds staff; bookings and optional report permission) | Built, **not yet tested** |
+| Email notifications (opt-in, verified email only, no medical details) | Built, **off until a provider key is added** (INTEGRATIONS.md). Not tested |
+| AI help assistant (consent first, no access to records, emergency messages bypass the AI) | Built, **off until a key is added** (INTEGRATIONS.md). Not tested |
+| Admin Integrations and Readiness pages, TESTING.md | Built, **not yet tested** |
+| Hospital staff accounts, SMS, WhatsApp, push, ABDM | **Not built** |
 | Service worker / offline | **Not built** on purpose (avoids stale private pages) |
 
 ## Handling an account deletion request (manual, on purpose)
@@ -45,7 +47,8 @@ Admin > Data requests shows each request. Nothing is erased automatically, becau
 4. Mark the request Completed with a note saying what was done and why anything was kept. The person is notified.
 
 ## Known limitations
-- One role per account. A doctor, lab or hospital registers with its own email.
+- One role per account. A doctor, lab or hospital registers with its own email. Lab staff are added by the lab owner and act for one lab only.
+- Staff do not receive the lab's notifications; only the owner does.
 - One test per lab booking on screen (server accepts up to 10).
 - No distance sorting or ratings (no real data yet).
 - Firestore security rules and Storage rules were reviewed by reading, not by an emulator test suite. Write and run rules tests before launch.

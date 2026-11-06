@@ -113,11 +113,11 @@ service cloud.firestore {
     }
     match /lab_slot_counts/{id} { allow read: if true; allow write: if false; }
     match /diagnostic_bookings/{id} {
-      allow read: if signedIn() && (resource.data.patientUid == request.auth.uid || resource.data.labUid == request.auth.uid || isAdmin());
+      allow read: if signedIn() && (resource.data.patientUid == request.auth.uid || resource.data.labUid == request.auth.uid || (request.auth.token.role == 'staff' && request.auth.token.canBookings == true && resource.data.labUid == request.auth.token.labUid) || isAdmin());
       allow write: if false;
     }
     match /lab_reports/{id} {
-      allow read: if signedIn() && (resource.data.patientUid == request.auth.uid || resource.data.labUid == request.auth.uid || isAdmin());
+      allow read: if signedIn() && (resource.data.patientUid == request.auth.uid || resource.data.labUid == request.auth.uid || (request.auth.token.role == 'staff' && request.auth.token.canReports == true && resource.data.labUid == request.auth.token.labUid) || isAdmin());
       allow write: if false;
     }
     match /diagnostic_categories/{id} { allow read: if true; allow write: if isAdmin(); }
@@ -188,7 +188,9 @@ service cloud.firestore {
 
 
     // ---- Platform settings, payments, reviews, packages (Phase 17-19) ----
-    match /settings/{id} {
+    match /settings/email { allow read: if isAdmin(); allow write: if isAdmin() && request.resource.data.keys().hasOnly(['enabled','updatedAt']) && request.resource.data.enabled is bool; }
+    match /settings/ai    { allow read: if isAdmin(); allow write: if isAdmin() && request.resource.data.keys().hasOnly(['enabled','updatedAt']) && request.resource.data.enabled is bool; }
+    match /settings/platform {
       allow read: if signedIn();
       allow write: if isAdmin() && request.resource.data.keys().hasOnly(['commissionPct','fixedFee','onlinePaymentEnabled','updatedAt'])
         && request.resource.data.commissionPct is number && request.resource.data.commissionPct >= 0 && request.resource.data.commissionPct <= 50
@@ -221,8 +223,9 @@ service cloud.firestore {
     // ---- Privacy, preferences, growth tools (Phase 20-22) ----
     match /notification_preferences/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
-      allow write: if signedIn() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['reminders','updates','updatedAt'])
-        && request.resource.data.reminders is bool && request.resource.data.updates is bool;
+      allow write: if signedIn() && request.auth.uid == uid && request.resource.data.keys().hasOnly(['reminders','updates','email','updatedAt'])
+        && request.resource.data.reminders is bool && request.resource.data.updates is bool
+        && (!('email' in request.resource.data) || request.resource.data.email is bool);
     }
     match /deletion_requests/{uid} { allow read: if signedIn() && (request.auth.uid == uid || isAdmin()); allow write: if false; }
     match /subscriptions/{uid} { allow read: if signedIn() && (request.auth.uid == uid || isAdmin()); allow write: if false; }
@@ -243,6 +246,14 @@ service cloud.firestore {
         && request.resource.data.appliesTo in ['all','appointment','diagnostic'] && request.resource.data.active is bool
         && (request.resource.data.expiresAt == null || request.resource.data.expiresAt is timestamp);
     }
+
+    // ---- Lab staff, AI consent, email queue (Phase 23-25) ----
+    match /lab_staff/{id} {
+      allow read: if signedIn() && (resource.data.labUid == request.auth.uid || resource.data.staffUid == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+    match /ai_consent/{uid} { allow read: if signedIn() && request.auth.uid == uid; allow write: if false; }
+    match /email_outbox/{id} { allow read: if isAdmin(); allow write: if false; }
 
     match /specialities/{id}     { allow read: if true; allow write: if isAdmin(); }
     match /service_areas/{id}    { allow read: if true; allow write: if isAdmin(); }
