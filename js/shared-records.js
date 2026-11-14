@@ -1,13 +1,13 @@
 import { db, functions } from './firebase-init.js';
 import { t, getLang } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el } from './util.js';
+import { $, el, bounce } from './util.js';
 import { collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 let items = [];
 const user = await requireUser(render);
-if ((await user.getIdTokenResult(true)).claims.role !== 'doctor') location.replace('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'doctor') await bounce('/dashboard.html');
 const s = await getDocs(query(collection(db, 'consents'), where('doctorUid', '==', user.uid)));
 items = s.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.status === 'active' && x.expiresAt?.toMillis() > Date.now()); // revoked or expired shares disappear
 function render() {

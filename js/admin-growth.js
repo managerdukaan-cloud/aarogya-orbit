@@ -1,13 +1,13 @@
 import { db, functions } from './firebase-init.js';
 import { t } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el, ist } from './util.js';
+import { $, el, ist, bounce } from './util.js';
 import { collection, getDocs, getDoc, setDoc, addDoc, deleteDoc, doc, Timestamp, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 let banners = [], coupons = [], subs = [], providers = [];
 const user = await requireUser(render);
-if ((await user.getIdTokenResult(true)).claims.role !== 'admin') location.replace('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'admin') await bounce('/dashboard.html');
 const call = (n, d) => httpsCallable(functions, n)(d);
 const all = async (c) => (await getDocs(collection(db, c))).docs.map(d => ({ id: d.id, ...d.data() }));
 async function load() {

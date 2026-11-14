@@ -16,7 +16,7 @@ function render() {
     const c = el('article', 'card dr'), h = el('h3', '', k.subject); h.append(el('span', 'status' + (k.status === 'closed' ? ' cancelled' : ''), t('sp.st.' + k.status))); c.append(h, el('p', '', k.message));
     for (const r of k.replies || []) { const p = el('p', 'meta', `${r.role === 'admin' ? t('sp.team') : t('rec.you')} · ${dt(r.at)}: ${r.text}`); p.style.whiteSpace = 'pre-wrap'; c.append(p); }
     if (k.status !== 'closed') {
-      const row = el('div', 'row'), inp = el('input'); inp.type = 'text'; inp.maxLength = 1000; inp.placeholder = t('sp.reply'); inp.style.cssText = 'flex:1;min-height:44px;border-radius:10px;border:0;padding:0 12px;background:var(--bg);box-shadow:var(--emboss-in)';
+      const row = el('div', 'row'), inp = el('input'); inp.type = 'text'; inp.maxLength = 1000; inp.placeholder = t('sp.reply'); inp.setAttribute('aria-label', t('sp.reply')); inp.style.cssText = 'flex:1;min-height:44px;border-radius:10px;border:0;padding:0 12px;background:var(--bg);box-shadow:var(--emboss-in)';
       const go = el('button', 'btn btn-ghost', t('sp.sendReply')), cl = el('button', 'btn btn-ghost danger', t('sp.close'));
       go.onclick = async () => { if (inp.value.trim().length < 2) return; go.disabled = true; try { await call('replyTicket', { id: k.id, text: inp.value }); await load(); } catch { say('msg', 'err.generic', false, t); go.disabled = false; } };
       cl.onclick = async () => { cl.disabled = true; try { await call('closeTicket', { id: k.id }); await load(); } catch { say('msg', 'err.generic', false, t); cl.disabled = false; } };

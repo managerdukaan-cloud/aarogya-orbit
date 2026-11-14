@@ -13,7 +13,7 @@
 <div class="field"><label for="file" data-i18n="rec.file"></label><input id="file" type="file" accept="application/pdf,image/jpeg,image/png"></div>
 <div class="btns"><button class="btn btn-primary" id="save" type="submit"><span id="spin" class="loader" hidden></span><span data-i18n="rec.upload"></span></button><button class="btn btn-ghost" id="cancel" type="button" data-i18n="fam.cancel"></button></div>
 </form></section>
-<div class="filters" style="grid-template-columns:repeat(auto-fit,minmax(160px,220px));margin-top:16px"><select id="fcat"></select><input id="fdate" type="date" aria-label="From date"></div>
+<div class="filters" style="grid-template-columns:repeat(auto-fit,minmax(160px,220px));margin-top:16px"><select id="fcat" data-i18n-aria="cat.category"></select><input id="fdate" type="date" aria-label="From date"></div>
 <p class="notice" id="empty" hidden data-i18n="rec.empty"></p>
 <div class="grid" id="list" style="grid-template-columns:1fr"></div>
 </main><script type="module" src="/js/records.js"></script></body></html>

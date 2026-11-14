@@ -1,11 +1,11 @@
 import { db } from './firebase-init.js';
 import { getLang } from './i18n.js';
 import { requireUser } from './guard.js';
-import { $, el } from './util.js';
+import { $, el, bounce } from './util.js';
 import { collection, getDocs, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const user = await requireUser(render);
-if ((await user.getIdTokenResult(true)).claims.role !== 'admin') location.replace('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'admin') await bounce('/dashboard.html');
 const rows = (await getDocs(query(collection(db, 'audit_logs'), orderBy('at', 'desc'), limit(100)))).docs.map(d => d.data());
 const short = (u) => (u === 'system' ? 'system' : (u || '-').slice(0, 8));
 function render() {

@@ -1,12 +1,12 @@
 import { db } from './firebase-init.js';
 import { t } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el, toMins } from './util.js';
+import { $, el, toMins, bounce } from './util.js';
 import { doc, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], SLOTS = [30, 60, 120];
 const user = await requireUser();
-if ((await user.getIdTokenResult(true)).claims.role !== 'lab') location.replace('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'lab') await bounce('/dashboard.html');
 const ref = doc(db, 'lab_settings', user.uid), saved = (await getDoc(ref)).data();
 for (const m of SLOTS) $('slot').add(new Option(t('sch.min').replace('{n}', m), m));
 $('slot').value = saved?.slotMinutes || 60; $('cap').value = saved?.capacity || 3; $('pins').value = (saved?.collectionPins || []).join(', ');

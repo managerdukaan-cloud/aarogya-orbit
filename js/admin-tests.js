@@ -1,12 +1,12 @@
 import { db } from './firebase-init.js';
 import { t, getLang } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el, slug, nameOf } from './util.js';
+import { $, el, slug, nameOf, bounce } from './util.js';
 import { collection, getDocs, getDoc, setDoc, writeBatch, doc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 let cats = [], tests = [], editing = null;
 const user = await requireUser(() => { fillCats(); render(); });
-if ((await user.getIdTokenResult(true)).claims.role !== 'admin') location.replace('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'admin') await bounce('/dashboard.html');
 
 // Starter catalogue: names and categories only. Sample type, fasting and preparation are left EMPTY on purpose:
 // clinical instructions must be entered by someone qualified, never guessed. Test names are kept in English in both languages.
