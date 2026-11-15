@@ -1,14 +1,14 @@
 import { db } from './firebase-init.js';
 import { t, getLang } from './i18n.js';
 import { requireUser } from './guard.js';
-import { $, el } from './util.js';
+import { $, el, bounce } from './util.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 const id = new URLSearchParams(location.search).get('p');
 let p = null;
 await requireUser(render);
 try { const s = await getDoc(doc(db, 'payments', id || 'x')); p = s.exists() ? s.data() : null; } catch { p = null; }
-if (!p) location.replace('/dashboard.html');
+if (!p) await bounce('/dashboard.html');
 function render() {
   const box = el('article', 'card rx');
   const when = p.paidAt?.toDate ? p.paidAt.toDate().toLocaleString(getLang() === 'hi' ? 'hi-IN' : 'en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'long', timeStyle: 'short' }) : '';

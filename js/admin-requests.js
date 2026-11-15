@@ -1,13 +1,13 @@
 import { db, functions } from './firebase-init.js';
 import { t, getLang } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el } from './util.js';
+import { $, el, bounce } from './util.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 let items = [];
 const user = await requireUser(render);
-if ((await user.getIdTokenResult(true)).claims.role !== 'admin') location.replace('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'admin') await bounce('/dashboard.html');
 const dt = (ts) => ts?.toDate ? ts.toDate().toLocaleString(getLang() === 'hi' ? 'hi-IN' : 'en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) : '';
 async function load() { items = (await getDocs(collection(db, 'deletion_requests'))).docs.map(d => d.data()).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)); render(); }
 function render() {

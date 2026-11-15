@@ -1,17 +1,17 @@
 import { db, functions } from './firebase-init.js';
 import { t, getLang } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el, ist, toMins, dayKey, addDays, slotsFor, chip, nameOf } from './util.js';
+import { $, el, ist, toMins, dayKey, addDays, slotsFor, chip, nameOf, bounce } from './util.js';
 import { doc, getDoc, getDocs, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 const q = new URLSearchParams(location.search), labId = q.get('l'), pkgId = q.get('p'), isPkg = !!pkgId, testId = isPkg ? pkgId : q.get('t');
-if (!labId || !testId) location.replace('/tests.html');
+if (!labId || !testId) await bounce('/tests.html');
 let lab, sch, test, price, members = [], type = '', date = '', time = '', counts = {};
 const user = await requireUser(() => { head(); renderTypes(); renderMembers(); renderDates(); renderTimes(); });
 const role = (await user.getIdTokenResult(true)).claims.role;
 const [l, s, tt, p] = await Promise.all([getDoc(doc(db, 'labs', labId)), getDoc(doc(db, 'lab_settings', labId)), getDoc(doc(db, isPkg ? 'test_packages' : 'diagnostic_tests', testId)), getDoc(doc(db, isPkg ? 'lab_package_pricing' : 'lab_pricing', `${labId}_${testId}`))]);
-if (!l.exists() || !tt.exists() || !p.exists() || l.data().verified !== true) location.replace('/tests.html');
+if (!l.exists() || !tt.exists() || !p.exists() || l.data().verified !== true) await bounce('/tests.html');
 lab = l.data(); sch = s.data(); test = tt.data(); price = p.data();
 function head() {
   $('with').textContent = `${nameOf(test, getLang())} · ${lab.name}`;
@@ -71,7 +71,7 @@ $('confirm').addEventListener('click', async () => {
     $('summary').textContent = `${nameOf(test, getLang())} · ${lab.name} · ${date} · ${time}`; $('formWrap').hidden = true; $('done').hidden = false;
   } catch (e) {
     const k = { 'functions/already-exists': 'bk.slotTaken', 'functions/failed-precondition': 'bk.past', 'functions/out-of-range': 'dbk.noArea', 'functions/permission-denied': 'bk.patientOnly' }[e.code] || 'err.generic';
-    say('msg', k, false, t); if (k === 'bk.slotTaken') await pickDate(date); else $('confirm').disabled = !time;
+    say('msg', k, false, t); if (k === 'bk.slotTaken') { await pickDate(date); say('msg', k, false, t); } else $('confirm').disabled = !time;
   }
   $('spin').hidden = true;
 });

@@ -1,13 +1,13 @@
 import { db, functions } from './firebase-init.js';
 import { t } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el } from './util.js';
+import { $, el, bounce } from './util.js';
 import { collection, getDocs, query, limit } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 let users = [];
 const user = await requireUser(() => { fill(); render(); });
-if ((await user.getIdTokenResult(true)).claims.role !== 'admin') location.replace('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'admin') await bounce('/dashboard.html');
 function fill() { const s = $('role'), v = s.value; s.replaceChildren(new Option(t('ad.allRoles'), '')); ['patient', 'doctor', 'lab', 'staff', 'hospital', 'admin'].forEach(r => s.add(new Option(t('role.' + r), r))); s.value = v; }
 async function load() { users = (await getDocs(query(collection(db, 'users'), limit(200)))).docs.map(d => ({ id: d.id, ...d.data() })); fill(); render(); }
 function render() {

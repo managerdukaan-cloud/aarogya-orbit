@@ -1,0 +1,7 @@
+{
+  "name": "aarogya-orbit-tests",
+  "private": true,
+  "description": "Automated checks for AAROGYA ORBIT: server logic, every page, key interactions, accessibility and security headers.",
+  "scripts": { "test": "node run-all.js", "test:server": "node server-tests.js", "test:pages": "node run.js", "test:flows": "node flows.js", "test:audit": "node audit.js", "test:csp": "node csp-check.js" },
+  "devDependencies": { "playwright": "^1.56.0" }
+}

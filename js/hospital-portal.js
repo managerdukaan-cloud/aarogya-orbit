@@ -1,15 +1,16 @@
 import { db, functions } from './firebase-init.js';
 import { t } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el } from './util.js';
+import { $, el, bounce } from './util.js';
 import { collection, getDocs, getDoc, updateDoc, doc, query, where, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 let links = [];
 const user = await requireUser(render);
-if ((await user.getIdTokenResult(true)).claims.role !== 'hospital') location.replace('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'hospital') await bounce('/dashboard.html');
 const call = (n, d) => httpsCallable(functions, n)(d);
 const h = (await getDoc(doc(db, 'hospitals', user.uid))).data();
+if (!h) await bounce('/dashboard.html'); // no facility record: nothing to manage
 $('hname').textContent = h.name; $('hmeta').textContent = `${t('ha.' + h.type)} · ${h.address} - ${h.pin}`;
 $('departments').value = (h.departments || []).join(', '); $('phone').value = h.phone || '';
 async function load() { links = (await getDocs(query(collection(db, 'hospital_links'), where('hospitalUid', '==', user.uid)))).docs.map(d => ({ id: d.id, ...d.data() })); render(); }

@@ -3,11 +3,12 @@ import { t } from './i18n.js';
 import { requireUser, say } from './guard.js';
 import { doc, getDoc, getDocs, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
+import { bounce } from './util.js';
 
 const $ = (id) => document.getElementById(id);
 const DAYKEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 const doctorId = new URLSearchParams(location.search).get('d');
-if (!doctorId) location.replace('/doctors.html');
+if (!doctorId) await bounce('/doctors.html');
 let dr, sch, members = [], date = '', time = '', taken = new Set();
 
 // Dates and times are always Indian Standard Time, whatever the device says.
@@ -29,7 +30,7 @@ function head() { if (dr) { $('with').textContent = t('bk.with').replace('{name}
 
 const role = (await user.getIdTokenResult(true)).claims.role;
 const [d, s] = await Promise.all([getDoc(doc(db, 'doctors', doctorId)), getDoc(doc(db, 'doctor_schedules', doctorId))]);
-if (!d.exists() || d.data().verified !== true || d.data().active === false) location.replace('/doctors.html');
+if (!d.exists() || d.data().verified !== true || d.data().active === false) await bounce('/doctors.html');
 dr = d.data(); sch = s.data(); head();
 if (role !== 'patient') { $('blocked').hidden = false; $('blocked').textContent = t('bk.patientOnly'); $('formWrap').hidden = true; }
 else if (!sch || !Object.values(sch.weekly || {}).some(a => a.length)) { $('blocked').hidden = false; $('blocked').textContent = t('bk.noDates'); $('formWrap').hidden = true; }
@@ -80,7 +81,7 @@ $('confirm').addEventListener('click', async () => {
   } catch (e) {
     const k = { 'functions/already-exists': 'bk.slotTaken', 'functions/failed-precondition': 'bk.past', 'functions/permission-denied': 'bk.patientOnly' }[e.code] || 'err.generic';
     say('msg', k, false, t);
-    if (k === 'bk.slotTaken') await pickDate(date); else $('confirm').disabled = !time;
+    if (k === 'bk.slotTaken') { await pickDate(date); say('msg', k, false, t); } else $('confirm').disabled = !time;
   }
   $('spin').hidden = true;
 });

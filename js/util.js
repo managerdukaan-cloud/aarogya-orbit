@@ -20,3 +20,5 @@ export const chip = (label, pressed, onClick, disabled = false) => {
   const b = el('button', 'chip', label); b.type = 'button'; b.setAttribute('aria-pressed', pressed); b.disabled = disabled; b.onclick = onClick; return b;
 };
 export const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+// Send the person to another page and stop this page's script, so nothing runs on missing data.
+export const bounce = (url) => { location.replace(url); return new Promise(() => {}); };

@@ -3,13 +3,14 @@ import { t } from './i18n.js';
 import { requireUser, say } from './guard.js';
 import { collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
+import { bounce } from './util.js';
 
 const $ = (id) => document.getElementById(id);
 const OPEN = ['pending', 'confirmed', 'rescheduled', 'checked_in', 'in_consultation'];
 let items = [];
 const user = await requireUser(render);
 // The server re-checks the doctor role on every change. This only avoids showing a useless page.
-if ((await user.getIdTokenResult(true)).claims.role !== 'doctor') location.replace('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'doctor') await bounce('/dashboard.html');
 
 function ist() {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()).map(x => [x.type, x.value]));

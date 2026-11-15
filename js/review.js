@@ -1,11 +1,11 @@
 import { functions } from './firebase-init.js';
 import { t } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, chip } from './util.js';
+import { $, chip, bounce } from './util.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 const q = new URLSearchParams(location.search), kind = q.get('k'), id = q.get('id');
-if (!['doctor', 'lab'].includes(kind) || !id) location.replace('/dashboard.html');
+if (!['doctor', 'lab'].includes(kind) || !id) await bounce('/dashboard.html');
 let stars = 0;
 await requireUser(() => { $('title').textContent = t(kind === 'doctor' ? 'rv.rate' : 'rv.rateLab'); draw(); });
 $('title').textContent = t(kind === 'doctor' ? 'rv.rate' : 'rv.rateLab');

@@ -1,14 +1,14 @@
 import { db } from './firebase-init.js';
 import { t, getLang } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el, nameOf } from './util.js';
+import { $, el, nameOf, bounce } from './util.js';
 import { collection, getDocs, getDoc, setDoc, deleteDoc, doc, query, where, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 let tests = [], mine = {}, lab = null;
 const user = await requireUser(render);
-if ((await user.getIdTokenResult(true)).claims.role !== 'lab') location.replace('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'lab') await bounce('/dashboard.html');
 const [l, tt, p] = await Promise.all([getDoc(doc(db, 'labs', user.uid)), getDocs(collection(db, 'diagnostic_tests')), getDocs(query(collection(db, 'lab_pricing'), where('labUid', '==', user.uid)))]);
-lab = l.data(); tests = tt.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.active !== false).sort((a, b) => a.name_en.localeCompare(b.name_en));
+lab = l.data() || {}; tests = tt.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.active !== false).sort((a, b) => a.name_en.localeCompare(b.name_en));
 p.docs.forEach(d => mine[d.data().testId] = d.data());
 $('q').oninput = render;
 

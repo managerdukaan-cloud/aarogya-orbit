@@ -1,12 +1,12 @@
 import { db } from './firebase-init.js';
 import { t, getLang } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el, slug, nameOf } from './util.js';
+import { $, el, slug, nameOf, bounce } from './util.js';
 import { collection, getDocs, getDoc, setDoc, doc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 let pkgs = [], tests = [], editing = null;
 const user = await requireUser(() => { drawTests(); render(); });
-if ((await user.getIdTokenResult(true)).claims.role !== 'admin') location.replace('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'admin') await bounce('/dashboard.html');
 async function load() {
   const [p, tt] = await Promise.all([getDocs(collection(db, 'test_packages')), getDocs(collection(db, 'diagnostic_tests'))]);
   pkgs = p.docs.map(d => ({ id: d.id, ...d.data() })); tests = tt.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.active !== false).sort((a, b) => a.name_en.localeCompare(b.name_en)); drawTests(); render();

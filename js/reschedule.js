@@ -1,16 +1,16 @@
 import { db, functions } from './firebase-init.js';
 import { t } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, ist, toMins, dayKey, addDays, slotsFor, chip } from './util.js';
+import { $, ist, toMins, dayKey, addDays, slotsFor, chip, bounce } from './util.js';
 import { doc, getDoc, getDocs, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 const rid = new URLSearchParams(location.search).get('r');
-if (!rid) location.replace('/appointments.html');
+if (!rid) await bounce('/appointments.html');
 let appt, sch, date = '', time = '', taken = new Set();
 const user = await requireUser(() => { renderDates(); renderTimes(); head(); });
 appt = (await getDoc(doc(db, 'appointments', rid))).data();
-if (!appt || appt.patientUid !== user.uid || !['pending', 'confirmed', 'rescheduled'].includes(appt.status)) location.replace('/appointments.html');
+if (!appt || appt.patientUid !== user.uid || !['pending', 'confirmed', 'rescheduled'].includes(appt.status)) await bounce('/appointments.html');
 sch = (await getDoc(doc(db, 'doctor_schedules', appt.doctorUid))).data();
 function head() { $('with').textContent = `${appt.doctorName} · ${appt.clinicName || ''}`; $('current').textContent = `${t('rs.current')}: ${appt.date} ${appt.time}`; }
 head();
@@ -39,7 +39,7 @@ $('confirm').addEventListener('click', async () => {
   try { await httpsCallable(functions, 'rescheduleAppointment')({ id: rid, date, time }); $('formWrap').hidden = true; $('done').hidden = false; }
   catch (e) {
     const k = { 'functions/already-exists': 'bk.slotTaken', 'functions/failed-precondition': 'bk.past', 'functions/resource-exhausted': 'rs.limit' }[e.code] || 'err.generic';
-    say('msg', k, false, t); if (k === 'bk.slotTaken') await pickDate(date); else $('confirm').disabled = !time;
+    say('msg', k, false, t); if (k === 'bk.slotTaken') { await pickDate(date); say('msg', k, false, t); } else $('confirm').disabled = !time;
   }
   $('spin').hidden = true;
 });

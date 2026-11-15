@@ -46,12 +46,17 @@ Admin > Data requests shows each request. Nothing is erased automatically, becau
 3. Disable or delete the Auth user (Firebase Console > Authentication).
 4. Mark the request Completed with a note saying what was done and why anything was kept. The person is notified.
 
+## Automated checks (added in Phase 27-30)
+`tests/` holds a test suite that runs the real pages and the real `functions/index.js` against stand-ins for Firebase: server logic (39 checks), every page in English and Hindi on a phone and a desktop (356 loads), the same pages with an empty database (178), buttons and forms (48), accessibility and SEO, and the security-header policy. `.github/workflows/tests.yml` runs them on every push; see the repository's Actions tab. They do not replace testing on the live site (`TESTING.md`) and they do not test the Firestore/Storage security rules.
+Found and fixed by them: the "slot just taken" message was hidden by the very code that reloaded the slots; removing a doctor from a hospital would have failed in production (a transaction wrote before it read); pages kept running after redirecting on a missing document; header, grid and inline inputs overflowed on 320px phones; tap targets were under 44px; placeholder-only fields had no accessible name; one page had no heading and four public pages no description.
+Documents: `docs/DATA_MODEL.md` (every collection, who writes and reads it), `docs/OPERATIONS.md` (backups, monitoring, incidents). `firebase.json` now also sends X-Frame-Options, Permissions-Policy and a Content-Security-Policy in report-only mode (see OPERATIONS.md before enforcing it).
+
 ## Known limitations
 - One role per account. A doctor, lab or hospital registers with its own email. Lab staff are added by the lab owner and act for one lab only.
 - Staff do not receive the lab's notifications; only the owner does.
 - One test per lab booking on screen (server accepts up to 10).
 - No distance sorting or ratings (no real data yet).
-- Firestore security rules and Storage rules were reviewed by reading, not by an emulator test suite. Write and run rules tests before launch.
+- Firestore security rules and Storage rules were reviewed by reading and cross-checked against what the pages write, but never run in the Firebase emulator. Write and run rules tests before launch.
 - Rate limits are simple per-person counters; add Firebase App Check and abuse monitoring before launch.
 - Reminders are in-app only. Email, SMS and WhatsApp are not connected.
 
