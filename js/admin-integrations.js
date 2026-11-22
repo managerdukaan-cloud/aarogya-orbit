@@ -1,13 +1,13 @@
 import { db, functions } from './firebase-init.js';
 import { t } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el, bounce } from './util.js';
+import { $, el } from './util.js';
 import { collection, getDocs, setDoc, doc, query, orderBy, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 let st = null, counts = {};
 const user = await requireUser(render);
-if ((await user.getIdTokenResult(true)).claims.role !== 'admin') await bounce('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'admin') location.replace('/dashboard.html');
 async function load() {
   try { st = (await httpsCallable(functions, 'integrationStatus')()).data; } catch { say('msg', 'err.generic', false, t); }
   try { counts = {}; (await getDocs(query(collection(db, 'email_outbox'), orderBy('createdAt', 'desc'), limit(100)))).docs.forEach(d => { const s = d.data().status; counts[s] = (counts[s] || 0) + 1; }); } catch {}

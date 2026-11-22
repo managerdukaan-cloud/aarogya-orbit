@@ -4,16 +4,15 @@ import { requireUser, say } from './guard.js';
 import { renderRx } from './rx-view.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
-import { bounce } from './util.js';
 
 const $ = (id) => document.getElementById(id);
 const aid = new URLSearchParams(location.search).get('a');
-if (!aid) await bounce('/dashboard.html');
+if (!aid) location.replace('/dashboard.html');
 const user = await requireUser(() => { if (rx) showRx(); });
 const role = (await user.getIdTokenResult(true)).claims.role;
 let appt, rx = null;
 try { appt = (await getDoc(doc(db, 'appointments', aid))).data(); } catch { appt = null; }
-if (!appt) await bounce('/dashboard.html');
+if (!appt) location.replace('/dashboard.html');
 try { const s = await getDoc(doc(db, 'prescriptions', aid)); rx = s.exists() ? s.data() : null; } catch { rx = null; }
 
 function showRx() { $('view').replaceChildren(renderRx(rx)); }

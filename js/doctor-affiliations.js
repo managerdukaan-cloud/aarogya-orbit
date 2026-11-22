@@ -1,13 +1,13 @@
 import { db, functions } from './firebase-init.js';
 import { t } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el, bounce } from './util.js';
+import { $, el } from './util.js';
 import { collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 let links = [];
 const user = await requireUser(render);
-if ((await user.getIdTokenResult(true)).claims.role !== 'doctor') await bounce('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'doctor') location.replace('/dashboard.html');
 const call = (n, d) => httpsCallable(functions, n)(d);
 async function load() { links = (await getDocs(query(collection(db, 'hospital_links'), where('doctorUid', '==', user.uid)))).docs.map(d => ({ id: d.id, ...d.data() })).filter(l => ['active', 'invited'].includes(l.status)); render(); }
 function render() {

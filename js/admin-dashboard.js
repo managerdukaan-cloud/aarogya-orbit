@@ -1,12 +1,12 @@
 import { functions } from './firebase-init.js';
 import { t } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el, bounce } from './util.js';
+import { $, el } from './util.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 let s = null;
 const user = await requireUser(render);
-if ((await user.getIdTokenResult(true)).claims.role !== 'admin') await bounce('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'admin') location.replace('/dashboard.html');
 try { s = (await httpsCallable(functions, 'adminStats')()).data; } catch { say('msg', 'err.generic', false, t); }
 const tile = (label, value, href) => { const c = el(href ? 'a' : 'article', 'card'); if (href) c.href = href; c.append(el('p', 'mini', t(label)), el('p', 'price', String(value))); return c; };
 function render() {

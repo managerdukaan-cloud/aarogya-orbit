@@ -10,7 +10,7 @@
 .field input[type=text],.field input[type=email],.field input[type=password]{width:100%;min-height:48px;border:1.5px solid transparent;border-radius:var(--r-sm);padding:0 14px;font:400 16px var(--font);background:var(--bg);box-shadow:var(--emboss-in);color:var(--graphite);transition:border-color .2s,box-shadow .2s}
 .field input:focus{outline:none;border-color:var(--graphite);box-shadow:0 0 0 4px rgba(183,255,114,.5)}
 .pw{position:relative}.pw input{padding-right:76px!important}
-.pw button{position:absolute;right:6px;top:2px;min-height:44px;min-width:60px;border:0;background:none;font:600 13px var(--font);color:var(--muted);cursor:pointer}
+.pw button{position:absolute;right:6px;top:6px;min-height:36px;min-width:60px;border:0;background:none;font:600 13px var(--font);color:var(--muted);cursor:pointer}
 .meter{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px}
 .meter i{height:5px;border-radius:3px;background:var(--border);transition:background .25s}
 .meter[data-level="1"] i:nth-child(-n+1){background:var(--error)}

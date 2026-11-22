@@ -1,13 +1,13 @@
 import { db, functions } from './firebase-init.js';
 import { t, getLang } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el, bounce } from './util.js';
+import { $, el } from './util.js';
 import { collection, getDocs, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 let items = [];
 const user = await requireUser(render);
-if ((await user.getIdTokenResult(true)).claims.role !== 'admin') await bounce('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'admin') location.replace('/dashboard.html');
 async function load() { items = (await getDocs(query(collection(db, 'reviews'), orderBy('createdAt', 'desc'), limit(200)))).docs.map(d => ({ id: d.id, ...d.data() })); render(); }
 function render() {
   $('empty').hidden = items.length > 0; const box = $('list'); box.replaceChildren();

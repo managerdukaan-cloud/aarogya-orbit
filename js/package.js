@@ -1,17 +1,17 @@
 import { auth, db } from './firebase-init.js';
 import { initLang, setLang, t, getLang } from './i18n.js';
-import { $, el, nameOf, bounce } from './util.js';
+import { $, el, nameOf } from './util.js';
 import { doc, getDoc, getDocs, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 
 const pid = new URLSearchParams(location.search).get('p');
-if (!pid) await bounce('/packages.html');
+if (!pid) location.replace('/packages.html');
 let pkg, tests = [], rows = [], loggedIn = false;
 document.querySelectorAll('.lang button').forEach(b => b.addEventListener('click', async () => { await setLang(b.dataset.lang); paint(); }));
 await initLang();
 loggedIn = await new Promise(r => { const u = onAuthStateChanged(auth, x => { u(); r(!!x); }); });
 const ps = await getDoc(doc(db, 'test_packages', pid));
-if (!ps.exists() || ps.data().active === false) await bounce('/packages.html');
+if (!ps.exists() || ps.data().active === false) location.replace('/packages.html');
 pkg = ps.data();
 const [pr, lb, tt] = await Promise.all([getDocs(query(collection(db, 'lab_package_pricing'), where('packageId', '==', pid))), getDocs(collection(db, 'labs')), getDocs(collection(db, 'diagnostic_tests'))]);
 tests = tt.docs.map(d => ({ id: d.id, ...d.data() })); const labs = Object.fromEntries(lb.docs.map(d => [d.id, d.data()]));

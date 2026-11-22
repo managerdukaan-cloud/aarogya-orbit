@@ -1,12 +1,12 @@
 import { functions } from './firebase-init.js';
 import { t } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el, bounce } from './util.js';
+import { $, el } from './util.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 let checks = null;
 const user = await requireUser(render);
-if ((await user.getIdTokenResult(true)).claims.role !== 'admin') await bounce('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'admin') location.replace('/dashboard.html');
 const INFO = ['users']; // shown as information, not as pass or fail
 const OPTIONAL = ['paymentKeys', 'paymentWebhook', 'paymentOn', 'emailKey', 'aiKey', 'hospitals']; // not needed to start; a cross means "not set up yet"
 const MANUAL = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9', 'm10'];

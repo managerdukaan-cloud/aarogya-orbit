@@ -1,13 +1,13 @@
 import { db, functions } from './firebase-init.js';
 import { t, getLang } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el, bounce } from './util.js';
+import { $, el } from './util.js';
 import { collection, getDocs, getDoc, setDoc, doc, query, orderBy, limit, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 let pays = [], cfg = { configured: false, enabled: false };
 const user = await requireUser(render);
-if ((await user.getIdTokenResult(true)).claims.role !== 'admin') await bounce('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'admin') location.replace('/dashboard.html');
 const call = (n, d) => httpsCallable(functions, n)(d);
 const dt = (ts) => ts?.toDate ? ts.toDate().toLocaleString(getLang() === 'hi' ? 'hi-IN' : 'en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) : '';
 const set = (await getDoc(doc(db, 'settings', 'platform'))).data() || {};

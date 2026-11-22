@@ -10,11 +10,7 @@ export async function setLang(l) {
   dict = await res.json();
   document.documentElement.lang = lang;
   document.querySelectorAll('[data-i18n]').forEach(e => e.textContent = t(e.dataset.i18n));
-  document.querySelectorAll('[data-i18n-ph]').forEach(e => {
-    e.placeholder = t(e.dataset.i18nPh); // a placeholder is not a label: give the field an accessible name too, unless it already has a label
-    if ((e.dataset.autoAria !== undefined || !e.getAttribute('aria-label')) && !(e.id && document.querySelector(`label[for="${e.id}"]`)) && !e.closest('label')) { e.setAttribute('aria-label', e.placeholder); e.dataset.autoAria = ''; }
-  });
-  document.querySelectorAll('[data-i18n-aria]').forEach(e => e.setAttribute('aria-label', t(e.dataset.i18nAria)));
+  document.querySelectorAll('[data-i18n-ph]').forEach(e => e.placeholder = t(e.dataset.i18nPh));
   document.querySelectorAll('.lang button').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === lang));
 }
 export function initLang() {

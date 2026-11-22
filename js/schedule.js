@@ -2,13 +2,12 @@ import { db } from './firebase-init.js';
 import { t } from './i18n.js';
 import { requireUser, say } from './guard.js';
 import { doc, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
-import { bounce } from './util.js';
 
 const $ = (id) => document.getElementById(id);
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], SLOTS = [10, 15, 20, 30, 45, 60];
 const user = await requireUser();
 // The server rules also require the doctor role. This only avoids showing a useless page.
-if ((await user.getIdTokenResult(true)).claims.role !== 'doctor') await bounce('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'doctor') location.replace('/dashboard.html');
 const ref = doc(db, 'doctor_schedules', user.uid);
 const saved = (await getDoc(ref)).data();
 

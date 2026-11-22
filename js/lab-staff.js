@@ -1,13 +1,13 @@
 import { db, functions } from './firebase-init.js';
 import { t } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el, bounce } from './util.js';
+import { $, el } from './util.js';
 import { collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 let staff = [];
 const user = await requireUser(render);
-if ((await user.getIdTokenResult(true)).claims.role !== 'lab') await bounce('/dashboard.html'); // only the owner manages staff
+if ((await user.getIdTokenResult(true)).claims.role !== 'lab') location.replace('/dashboard.html'); // only the owner manages staff
 const call = (n, d) => httpsCallable(functions, n)(d);
 async function load() { staff = (await getDocs(query(collection(db, 'lab_staff'), where('labUid', '==', user.uid), where('status', '==', 'active')))).docs.map(d => d.data()); render(); }
 function render() {

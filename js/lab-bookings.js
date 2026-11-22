@@ -1,7 +1,7 @@
 import { db, functions, storage } from './firebase-init.js';
 import { t, getLang } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el, bounce } from './util.js';
+import { $, el } from './util.js';
 import { collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { ref, uploadBytes } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
@@ -14,7 +14,7 @@ const user = await requireUser(render);
 const cl = (await user.getIdTokenResult(true)).claims;
 // the lab owner, or lab staff (who act for one lab with the permissions the owner gave)
 const labUid = cl.role === 'lab' ? user.uid : (cl.role === 'staff' && cl.canBookings === true ? cl.labUid : null), canReports = cl.role === 'lab' || (cl.role === 'staff' && cl.canReports === true);
-if (!labUid) await bounce('/dashboard.html');
+if (!labUid) location.replace('/dashboard.html');
 const call = (n, d) => httpsCallable(functions, n)(d);
 async function load() {
   const s = await getDocs(query(collection(db, 'diagnostic_bookings'), where('labUid', '==', labUid)));

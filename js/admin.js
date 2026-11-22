@@ -1,14 +1,14 @@
 import { db, functions } from './firebase-init.js';
 import { t, getLang } from './i18n.js';
 import { requireUser, say } from './guard.js';
-import { $, el, bounce } from './util.js';
+import { $, el } from './util.js';
 import { collection, query, where, getDocs, writeBatch, setDoc, doc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 import { httpsCallable } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 
 let pending = [], labs = [], hosp = [], specs = [], areas = [];
 const user = await requireUser(() => { renderAll(); });
 // The server re-checks the admin role on every action. This client check only avoids showing a useless page.
-if ((await user.getIdTokenResult(true)).claims.role !== 'admin') await bounce('/dashboard.html');
+if ((await user.getIdTokenResult(true)).claims.role !== 'admin') location.replace('/dashboard.html');
 const specName = (id) => { const s = specs.find(x => x.id === id); return !s ? id : (getLang() === 'hi' && s.name_hi ? s.name_hi : s.name_en); };
 const call = (name, data) => httpsCallable(functions, name)(data).then(r => r.data);
 
