@@ -591,8 +591,8 @@ exports.removeAffiliation = onCall(REGION, async (req) => {
   await db.runTransaction(async (tx) => {
     const l = await tx.get(ref);
     if (!l.exists || ![l.data().hospitalUid, l.data().doctorUid].includes(uid) || !['active', 'invited'].includes(l.data().status)) throw new HttpsError('permission-denied', 'Not allowed.');
+    const dRef = db.doc(`doctors/${l.data().doctorUid}`), d = await tx.get(dRef); // all reads first
     tx.update(ref, { status: 'removed', removedBy: uid, removedAt: FieldValue.serverTimestamp() });
-    const dRef = db.doc(`doctors/${l.data().doctorUid}`), d = await tx.get(dRef);
     if (d.exists && d.data().hospitalId === l.data().hospitalUid) tx.update(dRef, { hospitalId: FieldValue.delete(), hospitalName: FieldValue.delete() });
   });
   return { ok: true };
